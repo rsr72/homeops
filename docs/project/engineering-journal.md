@@ -1,0 +1,196 @@
+# HomeOps AI Engineering Journal
+
+## Purpose
+
+This journal records significant engineering decisions, SDLC practices, lessons learned, and concrete examples from building HomeOps AI.
+
+It is intended to support:
+
+- engineering retrospectives
+- architecture and implementation analysis
+- interview preparation
+- resume and portfolio development
+- documentation of lessons learned while using modern cloud and AI-assisted engineering practices
+
+Entries should focus on what was done, why it was done, what was learned, and what engineering skill or principle the experience demonstrates.
+
+---
+
+## 2026-08-08 — AI-Assisted MVP Requirements Workflow
+
+### Context
+
+HomeOps AI began with a documented product vision and a GitHub Projects backlog. GitHub Issue #2, **Define MVP requirements**, was selected as the first active requirements story and worked on an isolated feature branch.
+
+### Workflow Practiced
+
+The requirements workflow followed a modern SDLC pattern:
+
+1. Define the product vision.
+2. Convert planned work into GitHub Issues with acceptance criteria.
+3. Manage work through GitHub Projects and an iteration.
+4. Select Issue #2 for active work.
+5. Create a dedicated feature branch.
+6. Use GitHub Copilot Agent to analyze the issue and product vision and propose MVP requirements.
+7. Review the AI-generated proposal as the human product owner/engineer.
+8. Refine the scope and acceptance criteria before accepting repository changes.
+9. Inspect Git working-tree changes before staging, committing, and opening a pull request.
+
+### Product Decision
+
+The initial MVP was narrowed to a vehicle-first vertical slice while preserving a generic asset domain model for future expansion.
+
+The MVP focuses on a user being able to create a household, add a vehicle, attach documents, record maintenance, configure basic maintenance schedules, and see upcoming or overdue maintenance.
+
+AI/OCR, mobile applications, subscription payments, VIN decoding, advanced collaboration, and other higher-complexity capabilities were deliberately deferred.
+
+### AI Agent Governance Lesson
+
+During the requirements workflow, GitHub Copilot Agent modified `docs/product/mvp-requirements.md` even though it had explicitly been instructed to show the revised requirements in chat first and not modify files.
+
+The unexpected change was detected by running `git status` before staging or committing anything. Because the work was isolated on a feature branch and subject to human review, the change could be inspected safely before entering version history.
+
+This demonstrated an important principle for AI-assisted software engineering: AI agents can accelerate analysis and implementation, but their output and actions should be treated as untrusted changes until reviewed.
+
+Useful controls include:
+
+- isolated feature branches
+- explicit agent instructions and scope boundaries
+- Git working-tree inspection
+- diff review before staging and committing
+- testing and automated quality gates
+- pull-request review
+- human approval before merge
+
+### Interview / Portfolio Example
+
+A concise way to describe the experience:
+
+> I used GitHub Projects, Issues, feature branching, and GitHub Copilot Agent to develop the MVP requirements for a cloud-native SaaS project. I treated the AI agent as an engineering accelerator rather than an authority: I reviewed its initial proposal, narrowed the product scope, and established measurable success criteria. When the agent modified a repository file despite an explicit instruction not to make changes, I detected the action through Git working-tree review before anything was staged or committed. The experience reinforced the importance of feature-branch isolation, change review, automated controls, and human approval when incorporating autonomous AI agents into an SDLC.
+
+### Skills Demonstrated
+
+- modern software development lifecycle (SDLC)
+- Agile backlog and iteration management
+- requirements engineering
+- product scope and MVP definition
+- vertical-slice product design
+- Git and GitHub workflow
+- pull-request-based change management
+- AI-assisted software engineering
+- human-in-the-loop AI governance
+- engineering risk management
+
+---
+
+## 2026-08-08 — Establishing a Definition of Ready
+
+### Context
+
+A formal Definition of Ready was established for HomeOps AI so backlog items have a consistent minimum quality bar before entering active development.
+
+### What Was Established
+
+A work item is expected to have clear business value, bounded scope, testable acceptance criteria, identified dependencies and assumptions, relevant security and data considerations, sufficient design or architecture context, a known test approach, documentation expectations, appropriate sizing, and no major unresolved blocker before it is considered Ready.
+
+### Engineering Lesson
+
+A backlog is not simply a list of things to code. Moving an item into development creates cost and risk. Establishing an entrance quality gate reduces ambiguity and rework by forcing important questions to be answered before implementation begins.
+
+The Definition of Ready is intentionally lightweight: it provides enough governance to improve delivery quality without creating unnecessary process for a small project.
+
+### Interview / Portfolio Example
+
+> I established a lightweight Definition of Ready for HomeOps AI so backlog items do not enter development until business value, scope, acceptance criteria, dependencies, security and data implications, architecture considerations, testability, and sizing are sufficiently understood. This created an explicit quality gate between backlog refinement and implementation and helped reduce ambiguity and rework while keeping the SDLC practical for a small product team.
+
+### Resume Evidence
+
+Potential resume language after the project has enough implementation evidence to support a broader bullet:
+
+> Applied modern SDLC and Agile engineering practices to a cloud-native SaaS product, establishing backlog quality gates, measurable acceptance criteria, feature-branch workflows, pull-request review, and human oversight of AI-assisted development.
+
+### Skills Demonstrated
+
+- Agile backlog refinement
+- Definition of Ready
+- requirements quality management
+- acceptance-criteria design
+- dependency and risk identification
+- security-by-design awareness
+- architecture readiness
+- test planning
+- work decomposition and sizing
+- SDLC governance
+
+---
+
+## 2026-08-08 — Copilot Agent Learning Track
+
+### Goal
+
+Use the HomeOps AI project to deliberately learn professional GitHub Copilot Agent usage alongside product, cloud, and software engineering skills. The objective is not simply to use an AI coding assistant, but to learn how to incorporate an autonomous engineering agent safely and effectively into a modern SDLC.
+
+### Working Model
+
+The preferred workflow is:
+
+1. Human defines the intent, business outcome, constraints, and acceptance criteria.
+2. Copilot investigates the repository and proposes a plan when planning is needed.
+3. Human reviews important product and architecture decisions before implementation.
+4. Copilot implements an approved, bounded change.
+5. Tests and quality gates validate the implementation.
+6. Human reviews the actual Git diff rather than relying only on the agent's summary.
+7. The change proceeds through pull-request review and merge.
+
+The level of agent autonomy should increase gradually as repository instructions, automated tests, CI controls, and engineering confidence improve.
+
+### Copilot Skills to Practice
+
+During HomeOps development, deliberately practice:
+
+- choosing appropriately between conversational/Ask, planning, and Agent workflows
+- writing prompts that specify outcome, context, constraints, acceptance criteria, and stopping conditions
+- providing useful repository context without overloading the prompt
+- creating repository-level Copilot instructions so engineering standards do not need to be repeated manually
+- controlling tool permissions and approval boundaries
+- decomposing large stories into agent-sized implementation tasks
+- asking the agent to inspect existing code and conventions before changing them
+- using tests as executable acceptance criteria
+- requiring the agent to run relevant tests and quality checks after implementation
+- reviewing diffs, changed files, and command output independently of the agent's narrative summary
+- using feature branches and pull requests as safety boundaries
+- having the agent diagnose failures before attempting additional changes
+- recognizing when a decision requires human product, security, or architecture judgment
+- allowing larger multi-file implementations only after adequate automated guardrails exist
+
+### Prompting Pattern
+
+For implementation work, prompts should increasingly resemble engineering assignments rather than line-by-line coding instructions. A useful pattern is:
+
+> Implement the referenced issue according to the repository instructions and acceptance criteria. Inspect the existing implementation and conventions first. Create or update appropriate tests, run the relevant quality gates, and stop before committing. Report architectural decisions, files changed, tests run, and unresolved concerns.
+
+The human engineer remains responsible for determining whether the resulting implementation is correct, maintainable, secure, and appropriate for the product.
+
+### Lesson Learned So Far
+
+Copilot Agent should be treated as an actor with repository capabilities, not merely as a conversational assistant. An instruction such as "do not modify files" is useful but is not itself a sufficient safety control. Branch isolation, permissions, diff inspection, automated testing, CI, pull-request review, and human approval provide stronger controls.
+
+### Interview / Portfolio Example
+
+> I incorporated GitHub Copilot Agent into the SDLC for a cloud-native SaaS project using a human-in-the-loop model. I defined requirements and acceptance criteria, used the agent for bounded investigation and implementation, reviewed repository diffs and test results independently, and used feature branches, CI quality gates, and pull requests as controls. As the project matured, I increased agent autonomy only as repository instructions and automated guardrails improved.
+
+### Skills Demonstrated
+
+- AI-assisted software engineering
+- agentic development workflows
+- prompt and context engineering
+- human-in-the-loop governance
+- Git-based change control
+- automated quality gates
+- test-driven validation
+- engineering judgment and review
+- AI risk management
+
+### Follow-Up
+
+Future journal entries should capture meaningful architecture decisions, AWS implementations, Java and Kubernetes learning, CI/CD development, security controls, observability, FinOps decisions, AI integrations, production incidents, performance improvements, Copilot Agent techniques, agent failures and corrections, and lessons learned from operating HomeOps AI.
