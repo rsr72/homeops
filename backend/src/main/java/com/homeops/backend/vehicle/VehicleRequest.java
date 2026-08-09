@@ -1,4 +1,4 @@
-package com.homeops.backend.asset;
+package com.homeops.backend.vehicle;
 
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
@@ -12,9 +12,11 @@ import java.time.LocalDate;
 
 public record VehicleRequest(
         @NotBlank(message = "make is required")
+        @Size(max = 200, message = "make must be 200 characters or fewer")
         String make,
 
         @NotBlank(message = "model is required")
+        @Size(max = 200, message = "model must be 200 characters or fewer")
         String model,
 
         @NotNull(message = "year is required")
@@ -24,6 +26,9 @@ public record VehicleRequest(
 
         @Size(max = 17, message = "vin must be 17 characters or fewer")
         String vin,
+
+        @Size(max = 2_000, message = "notes must be 2000 characters or fewer")
+        String notes,
 
         LocalDate purchaseDate,
 
