@@ -104,7 +104,7 @@ cd backend
 
 ## Current CI Status
 
-GitHub Actions currently runs the Java backend verification workflow on pull requests and pushes to `main`. The current workflow executes `backend ./mvnw verify` on Java 21. Frontend CI has not been added yet.
+GitHub Actions currently runs backend and frontend verification on pull requests and pushes to `main`. The current workflow executes `backend ./mvnw verify` on Java 21 and `frontend npm ci`, `frontend npm test`, and `frontend npm run build` on Node 22.
 
 ## Documentation
 

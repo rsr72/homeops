@@ -20,7 +20,7 @@ The following parts of the modernization story are already real and should be tr
 
 - Product and engineering documentation are in place and actively maintained.
 - The Spring Boot backend, REST API, PostgreSQL local development flow, Flyway migrations, Spring Data JPA / Hibernate persistence, persisted Household domain, persisted household-scoped Vehicle domain, and backend automated tests are in place.
-- GitHub CI foundation is in place for the backend delivery path.
+- GitHub CI foundation is in place for the backend and frontend delivery paths.
 - The React + TypeScript browser frontend, frontend automated tests, Vite development/build tooling, npm workspace with committed `package-lock.json`, TanStack Query, React Hook Form, URL-driven household selection, and the first full-stack browser-to-PostgreSQL workflow are in place.
 - Generated frontend artifacts such as `node_modules`, `dist`, and TypeScript build output remain excluded from Git.
 - The following areas remain intentionally incomplete: authentication, authorization, AWS deployment, documents/OCR, maintenance/reminders, backend containerization, Playwright/E2E, mobile, payments, and production operations.
