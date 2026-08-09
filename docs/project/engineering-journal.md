@@ -302,3 +302,49 @@ Later work was explicitly sequenced behind prerequisites such as threat modeling
 - FinOps-aware planning
 - AI-agent task design
 - professional SDLC hygiene
+
+---
+
+## 2026-08-08 — Threat Modeling and AI Capacity as Engineering Constraints
+
+### Context
+
+Before implementing authentication, document upload, or sensitive household-data paths, HomeOps completed an initial MVP threat model. During the same work, GitHub Copilot Agent exhausted its included usage allowance and became temporarily unavailable until the development plan was upgraded.
+
+### Security Work Completed
+
+The threat model identified the system's key assets, actors, and trust boundaries and rated major threats using a lightweight High / Medium / Low approach. Broken household authorization and cross-household data access were treated as High risk. The model also covered document-upload abuse, API and input-validation risks, secrets/configuration exposure, privacy-safe logging, backup/recovery, accidental exposure of internal health/debug endpoints, and future AI/OCR processing risks.
+
+The highest-risk areas were connected to explicit test expectations, especially denial of cross-household access and safe handling of uploaded content. Durable security choices such as authentication provider, document scanning, edge/rate-limiting controls, and secrets management were intentionally left for later ADRs rather than being silently embedded in the threat model.
+
+### AI Engineering / FinOps Lesson
+
+AI-agent capacity is an engineering resource with cost and quota constraints. When the Copilot quota was exhausted, the project did not need to stop: planning, review, Git verification, and manual repository work remained viable. The experience reinforced a model-routing approach in which expensive agentic execution is used where repository-local automation creates real value, while planning and review can happen outside the coding agent.
+
+Upgrading the Copilot plan restored capacity, but the important lesson was not simply to buy more quota. AI usage should be treated similarly to other engineering resources: understand the cost model, choose the least expensive capability that reliably completes the task, bound agent work tightly, and preserve a graceful human-controlled fallback path.
+
+### Engineering Lessons
+
+- Threat modeling is most valuable before sensitive features are implemented, not after production exposure exists.
+- Multi-tenant authorization should be treated as a primary security boundary and tested explicitly.
+- Security requirements and implementation choices are different artifacts; durable implementation decisions may deserve ADRs.
+- AI agents should not become a single point of failure for the development process.
+- Model selection, context size, agent autonomy, and quota consumption are practical AI FinOps concerns.
+- Human-controlled Git workflows provide continuity and governance when an AI tool is unavailable or behaves unexpectedly.
+
+### Interview / Portfolio Example
+
+> Before implementing sensitive SaaS workflows, I created a lightweight threat model that identified trust boundaries, ranked risks, and made cross-tenant authorization a high-risk testable control. During the same project, an AI coding-agent quota was exhausted, so I treated agent capacity as an engineering/FinOps constraint rather than a blocker: the workflow fell back to human-controlled planning and Git operations, and I refined model-routing and agent-use practices to reserve expensive inference for work where repository-local automation added value.
+
+### Skills Demonstrated
+
+- application threat modeling
+- multi-tenant security design
+- secure file-upload planning
+- security test planning
+- privacy-aware observability
+- architecture decision governance
+- AI-assisted engineering operations
+- AI FinOps / usage governance
+- graceful degradation of engineering tooling
+- human-in-the-loop change control
