@@ -50,6 +50,27 @@ export interface VehicleResponse {
   updatedAt: string;
 }
 
+export interface MaintenanceEventRequest {
+  serviceDate: string;
+  description: string;
+  mileage?: number;
+  cost?: number;
+  notes?: string;
+}
+
+export interface MaintenanceEventResponse {
+  id: string;
+  householdId: string;
+  vehicleId: string;
+  serviceDate: string;
+  description: string;
+  mileage: number | null;
+  cost: number | null;
+  notes: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface HomeOpsErrorBody {
   status: number;
   error: string;

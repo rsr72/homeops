@@ -5,6 +5,8 @@ interface VehicleListProps {
   vehicles: VehicleResponse[];
   onEdit: (vehicle: VehicleResponse) => void;
   onDelete: (vehicle: VehicleResponse) => void;
+  onManageMaintenance: (vehicle: VehicleResponse) => void;
+  activeMaintenanceVehicleId?: string;
 }
 
 function money(value: number | null) {
@@ -15,7 +17,7 @@ function date(value: string | null) {
   return value ? new Intl.DateTimeFormat('en-US', { dateStyle: 'medium' }).format(new Date(value)) : 'Not set';
 }
 
-export function VehicleList({ vehicles, onEdit, onDelete }: VehicleListProps) {
+export function VehicleList({ vehicles, onEdit, onDelete, onManageMaintenance, activeMaintenanceVehicleId }: VehicleListProps) {
   return (
     <div className={styles.list} aria-label="Vehicle list">
       {vehicles.map((vehicle) => (
@@ -26,6 +28,13 @@ export function VehicleList({ vehicles, onEdit, onDelete }: VehicleListProps) {
               <p className={styles.subtitle}>{vehicle.year} · {vehicle.vin ?? 'VIN not set'}</p>
             </div>
             <div className={styles.actions}>
+              <button
+                className={activeMaintenanceVehicleId === vehicle.id ? styles.active : styles.action}
+                type="button"
+                onClick={() => onManageMaintenance(vehicle)}
+              >
+                Maintenance
+              </button>
               <button className={styles.action} type="button" onClick={() => onEdit(vehicle)}>Edit</button>
               <button className={styles.danger} type="button" onClick={() => onDelete(vehicle)}>Delete</button>
             </div>

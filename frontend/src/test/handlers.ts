@@ -1,15 +1,17 @@
 import { http, HttpResponse } from 'msw';
-import type { HouseholdResponse, VehicleResponse } from '../types';
+import type { HouseholdResponse, MaintenanceEventResponse, VehicleResponse } from '../types';
 
 type HouseholdStore = {
   households: HouseholdResponse[];
   vehiclesByHousehold: Record<string, VehicleResponse[]>;
+  maintenanceByVehicle: Record<string, MaintenanceEventResponse[]>;
   vehicleValidationMode: 'normal' | 'rejectMake';
 };
 
 const store: HouseholdStore = {
   households: [],
   vehiclesByHousehold: {},
+  maintenanceByVehicle: {},
   vehicleValidationMode: 'normal'
 };
 
@@ -45,9 +47,33 @@ function ensureVehicleBucket(householdId: string) {
   return store.vehiclesByHousehold[householdId];
 }
 
+function ensureMaintenanceBucket(vehicleId: string) {
+  if (!store.maintenanceByVehicle[vehicleId]) {
+    store.maintenanceByVehicle[vehicleId] = [];
+  }
+
+  return store.maintenanceByVehicle[vehicleId];
+}
+
+function sortMaintenanceEvents(events: MaintenanceEventResponse[]) {
+  return [...events].sort((left, right) => {
+    if (left.serviceDate !== right.serviceDate) {
+      return right.serviceDate.localeCompare(left.serviceDate);
+    }
+
+    return right.createdAt.localeCompare(left.createdAt);
+  });
+}
+
+function findVehicle(householdId: string, vehicleId: string) {
+  const bucket = ensureVehicleBucket(householdId);
+  return bucket.find((vehicle) => vehicle.id === vehicleId);
+}
+
 export function resetHomeOpsStore() {
   store.households = [];
   store.vehiclesByHousehold = {};
+  store.maintenanceByVehicle = {};
   store.vehicleValidationMode = 'normal';
   idCounter = 1;
 }
@@ -83,6 +109,7 @@ export function seedVehicle(householdId: string, make: string, model: string) {
   };
 
   ensureVehicleBucket(householdId).push(vehicle);
+  ensureMaintenanceBucket(vehicle.id);
   return vehicle;
 }
 
@@ -155,6 +182,7 @@ export const handlers = [
     };
 
     ensureVehicleBucket(householdId).push(vehicle);
+    ensureMaintenanceBucket(vehicle.id);
     return HttpResponse.json(vehicle, { status: 201 });
   }),
 
@@ -187,6 +215,172 @@ export const handlers = [
     const vehicleId = String(params.vehicleId);
     const bucket = ensureVehicleBucket(householdId);
     store.vehiclesByHousehold[householdId] = bucket.filter((vehicle) => vehicle.id !== vehicleId);
+    delete store.maintenanceByVehicle[vehicleId];
+    return new HttpResponse(null, { status: 204 });
+  }),
+
+  http.get('/api/households/:householdId/vehicles/:vehicleId/maintenance-events', ({ params }) => {
+    const householdId = String(params.householdId);
+    const vehicleId = String(params.vehicleId);
+
+    if (!findVehicle(householdId, vehicleId)) {
+      return apiError(404, 'NOT_FOUND', `Vehicle with id '${vehicleId}' was not found`);
+    }
+
+    return HttpResponse.json(sortMaintenanceEvents(ensureMaintenanceBucket(vehicleId)));
+  }),
+
+  http.post('/api/households/:householdId/vehicles/:vehicleId/maintenance-events', async ({ params, request }) => {
+    const householdId = String(params.householdId);
+    const vehicleId = String(params.vehicleId);
+
+    if (!findVehicle(householdId, vehicleId)) {
+      return apiError(404, 'NOT_FOUND', `Vehicle with id '${vehicleId}' was not found`);
+    }
+
+    const body = (await request.json()) as {
+      serviceDate?: string;
+      description?: string;
+      mileage?: number;
+      cost?: number;
+      notes?: string;
+    };
+
+    if (!body.serviceDate) {
+      return apiError(400, 'VALIDATION_ERROR', 'Request validation failed', [
+        { field: 'serviceDate', message: 'serviceDate is required' }
+      ]);
+    }
+
+    if (!body.description || !body.description.trim()) {
+      return apiError(400, 'VALIDATION_ERROR', 'Request validation failed', [
+        { field: 'description', message: 'description is required' }
+      ]);
+    }
+
+    if (typeof body.mileage === 'number' && body.mileage < 0) {
+      return apiError(400, 'VALIDATION_ERROR', 'Request validation failed', [
+        { field: 'mileage', message: 'mileage must be zero or greater' }
+      ]);
+    }
+
+    if (typeof body.cost === 'number' && body.cost < 0) {
+      return apiError(400, 'VALIDATION_ERROR', 'Request validation failed', [
+        { field: 'cost', message: 'cost must be zero or greater' }
+      ]);
+    }
+
+    const event: MaintenanceEventResponse = {
+      id: nextId(),
+      householdId,
+      vehicleId,
+      serviceDate: body.serviceDate,
+      description: body.description.trim(),
+      mileage: body.mileage ?? null,
+      cost: body.cost ?? null,
+      notes: body.notes?.trim() ? body.notes.trim() : null,
+      createdAt: nowIso(),
+      updatedAt: nowIso()
+    };
+
+    ensureMaintenanceBucket(vehicleId).push(event);
+    return HttpResponse.json(event, { status: 201 });
+  }),
+
+  http.get('/api/households/:householdId/vehicles/:vehicleId/maintenance-events/:eventId', ({ params }) => {
+    const householdId = String(params.householdId);
+    const vehicleId = String(params.vehicleId);
+    const eventId = String(params.eventId);
+
+    if (!findVehicle(householdId, vehicleId)) {
+      return apiError(404, 'NOT_FOUND', `Vehicle with id '${vehicleId}' was not found`);
+    }
+
+    const event = ensureMaintenanceBucket(vehicleId).find((entry) => entry.id === eventId);
+    if (!event) {
+      return apiError(404, 'NOT_FOUND', `Maintenance event with id '${eventId}' was not found`);
+    }
+
+    return HttpResponse.json(event);
+  }),
+
+  http.put('/api/households/:householdId/vehicles/:vehicleId/maintenance-events/:eventId', async ({ params, request }) => {
+    const householdId = String(params.householdId);
+    const vehicleId = String(params.vehicleId);
+    const eventId = String(params.eventId);
+
+    if (!findVehicle(householdId, vehicleId)) {
+      return apiError(404, 'NOT_FOUND', `Vehicle with id '${vehicleId}' was not found`);
+    }
+
+    const body = (await request.json()) as {
+      serviceDate?: string;
+      description?: string;
+      mileage?: number;
+      cost?: number;
+      notes?: string;
+    };
+
+    if (!body.serviceDate) {
+      return apiError(400, 'VALIDATION_ERROR', 'Request validation failed', [
+        { field: 'serviceDate', message: 'serviceDate is required' }
+      ]);
+    }
+
+    if (!body.description || !body.description.trim()) {
+      return apiError(400, 'VALIDATION_ERROR', 'Request validation failed', [
+        { field: 'description', message: 'description is required' }
+      ]);
+    }
+
+    if (typeof body.mileage === 'number' && body.mileage < 0) {
+      return apiError(400, 'VALIDATION_ERROR', 'Request validation failed', [
+        { field: 'mileage', message: 'mileage must be zero or greater' }
+      ]);
+    }
+
+    if (typeof body.cost === 'number' && body.cost < 0) {
+      return apiError(400, 'VALIDATION_ERROR', 'Request validation failed', [
+        { field: 'cost', message: 'cost must be zero or greater' }
+      ]);
+    }
+
+    const bucket = ensureMaintenanceBucket(vehicleId);
+    const index = bucket.findIndex((event) => event.id === eventId);
+    if (index < 0) {
+      return apiError(404, 'NOT_FOUND', `Maintenance event with id '${eventId}' was not found`);
+    }
+
+    const updatedEvent: MaintenanceEventResponse = {
+      ...bucket[index],
+      serviceDate: body.serviceDate,
+      description: body.description.trim(),
+      mileage: body.mileage ?? null,
+      cost: body.cost ?? null,
+      notes: body.notes?.trim() ? body.notes.trim() : null,
+      updatedAt: '2026-08-09T12:30:00Z'
+    };
+
+    bucket[index] = updatedEvent;
+    return HttpResponse.json(updatedEvent);
+  }),
+
+  http.delete('/api/households/:householdId/vehicles/:vehicleId/maintenance-events/:eventId', ({ params }) => {
+    const householdId = String(params.householdId);
+    const vehicleId = String(params.vehicleId);
+    const eventId = String(params.eventId);
+
+    if (!findVehicle(householdId, vehicleId)) {
+      return apiError(404, 'NOT_FOUND', `Vehicle with id '${vehicleId}' was not found`);
+    }
+
+    const bucket = ensureMaintenanceBucket(vehicleId);
+    const existingEvent = bucket.find((event) => event.id === eventId);
+    if (!existingEvent) {
+      return apiError(404, 'NOT_FOUND', `Maintenance event with id '${eventId}' was not found`);
+    }
+
+    store.maintenanceByVehicle[vehicleId] = bucket.filter((event) => event.id !== eventId);
     return new HttpResponse(null, { status: 204 });
   })
 ];

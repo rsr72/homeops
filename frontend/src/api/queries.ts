@@ -1,10 +1,13 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { homeOpsApi } from './homeopsApi';
-import type { HouseholdRequest, VehicleRequest } from '../types';
+import type { HouseholdRequest, MaintenanceEventRequest, VehicleRequest } from '../types';
 
 export const householdQueryKey = ['households'] as const;
 
 export const vehicleQueryKey = (householdId: string) => ['vehicles', householdId] as const;
+
+export const maintenanceEventQueryKey = (householdId: string, vehicleId: string) =>
+  ['maintenance-events', householdId, vehicleId] as const;
 
 export function useHouseholdsQuery() {
   return useQuery({
@@ -62,6 +65,48 @@ export function useDeleteVehicleMutation(householdId: string) {
     mutationFn: (vehicleId: string) => homeOpsApi.vehicles.delete(householdId, vehicleId),
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: vehicleQueryKey(householdId) });
+    }
+  });
+}
+
+export function useMaintenanceEventsQuery(householdId: string | undefined, vehicleId: string | undefined) {
+  return useQuery({
+    queryKey: householdId && vehicleId ? maintenanceEventQueryKey(householdId, vehicleId) : ['maintenance-events', 'empty'],
+    queryFn: () => homeOpsApi.maintenanceEvents.list(householdId as string, vehicleId as string),
+    enabled: Boolean(householdId && vehicleId)
+  });
+}
+
+export function useCreateMaintenanceEventMutation(householdId: string, vehicleId: string) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (payload: MaintenanceEventRequest) => homeOpsApi.maintenanceEvents.create(householdId, vehicleId, payload),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: maintenanceEventQueryKey(householdId, vehicleId) });
+    }
+  });
+}
+
+export function useUpdateMaintenanceEventMutation(householdId: string, vehicleId: string) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ eventId, payload }: { eventId: string; payload: MaintenanceEventRequest }) =>
+      homeOpsApi.maintenanceEvents.update(householdId, vehicleId, eventId, payload),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: maintenanceEventQueryKey(householdId, vehicleId) });
+    }
+  });
+}
+
+export function useDeleteMaintenanceEventMutation(householdId: string, vehicleId: string) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (eventId: string) => homeOpsApi.maintenanceEvents.delete(householdId, vehicleId, eventId),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: maintenanceEventQueryKey(householdId, vehicleId) });
     }
   });
 }

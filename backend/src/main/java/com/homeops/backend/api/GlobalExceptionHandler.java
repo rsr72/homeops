@@ -4,6 +4,8 @@ import com.homeops.backend.asset.ApiErrorResponse;
 import com.homeops.backend.asset.ApiValidationError;
 import com.homeops.backend.household.HouseholdNotFoundException;
 import com.homeops.backend.household.InvalidHouseholdRequestException;
+import com.homeops.backend.maintenanceevent.InvalidMaintenanceEventRequestException;
+import com.homeops.backend.maintenanceevent.MaintenanceEventNotFoundException;
 import com.homeops.backend.vehicle.InvalidVehicleRequestException;
 import com.homeops.backend.vehicle.VehicleNotFoundException;
 import org.springframework.http.HttpStatus;
@@ -26,8 +28,18 @@ public class GlobalExceptionHandler {
         return buildResponse(HttpStatus.NOT_FOUND, "NOT_FOUND", exception.getMessage());
     }
 
+    @ExceptionHandler(MaintenanceEventNotFoundException.class)
+    public ResponseEntity<ApiErrorResponse> handleMaintenanceEventNotFound(MaintenanceEventNotFoundException exception) {
+        return buildResponse(HttpStatus.NOT_FOUND, "NOT_FOUND", exception.getMessage());
+    }
+
     @ExceptionHandler(InvalidVehicleRequestException.class)
     public ResponseEntity<ApiErrorResponse> handleInvalidVehicleRequest(InvalidVehicleRequestException exception) {
+        return buildResponse(HttpStatus.BAD_REQUEST, "INVALID_REQUEST", exception.getMessage());
+    }
+
+    @ExceptionHandler(InvalidMaintenanceEventRequestException.class)
+    public ResponseEntity<ApiErrorResponse> handleInvalidMaintenanceEventRequest(InvalidMaintenanceEventRequestException exception) {
         return buildResponse(HttpStatus.BAD_REQUEST, "INVALID_REQUEST", exception.getMessage());
     }
 

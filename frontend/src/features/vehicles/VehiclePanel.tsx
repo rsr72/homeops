@@ -1,9 +1,10 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Panel } from '../../components/Panel';
 import { EmptyState } from '../../components/EmptyState';
 import { ErrorBanner } from '../../components/ErrorBanner';
 import { useDeleteVehicleMutation, useVehiclesQuery } from '../../api/queries';
 import type { VehicleResponse } from '../../types';
+import { MaintenanceEventPanel } from '../maintenanceevents/MaintenanceEventPanel';
 import { VehicleForm } from './VehicleForm';
 import { VehicleList } from './VehicleList';
 import styles from './VehiclePanel.module.css';
@@ -16,12 +17,26 @@ interface VehiclePanelProps {
 export function VehiclePanel({ householdId, householdName }: VehiclePanelProps) {
   const [selectedVehicle, setSelectedVehicle] = useState<VehicleResponse | undefined>();
   const [pendingDelete, setPendingDelete] = useState<VehicleResponse | undefined>();
+  const [activeMaintenanceVehicleId, setActiveMaintenanceVehicleId] = useState<string | undefined>();
   const [isFormOpen, setIsFormOpen] = useState(false);
 
   const vehiclesQuery = useVehiclesQuery(householdId);
   const deleteVehicleMutation = useDeleteVehicleMutation(householdId ?? '');
 
   const vehicleCount = vehiclesQuery.data?.length ?? 0;
+  const activeMaintenanceVehicle = vehiclesQuery.data?.find((vehicle) => vehicle.id === activeMaintenanceVehicleId);
+
+  useEffect(() => {
+    if (!vehiclesQuery.data || vehiclesQuery.data.length === 0) {
+      setActiveMaintenanceVehicleId(undefined);
+      return;
+    }
+
+    if (!activeMaintenanceVehicleId || !vehiclesQuery.data.some((vehicle) => vehicle.id === activeMaintenanceVehicleId)) {
+      setActiveMaintenanceVehicleId(vehiclesQuery.data[0].id);
+    }
+  }, [activeMaintenanceVehicleId, vehiclesQuery.data]);
+
   const panelTitle = useMemo(() => {
     if (!householdName) {
       return 'Vehicles';
@@ -40,6 +55,10 @@ export function VehiclePanel({ householdId, householdName }: VehiclePanelProps) 
     setIsFormOpen(true);
   }
 
+  function startMaintenance(vehicle: VehicleResponse) {
+    setActiveMaintenanceVehicleId(vehicle.id);
+  }
+
   async function confirmDelete() {
     if (!householdId || !pendingDelete) {
       return;
@@ -49,6 +68,9 @@ export function VehiclePanel({ householdId, householdName }: VehiclePanelProps) 
     setPendingDelete(undefined);
     if (selectedVehicle?.id === pendingDelete.id) {
       setSelectedVehicle(undefined);
+    }
+    if (activeMaintenanceVehicleId === pendingDelete.id) {
+      setActiveMaintenanceVehicleId(undefined);
     }
   }
 
@@ -101,7 +123,13 @@ export function VehiclePanel({ householdId, householdName }: VehiclePanelProps) 
         ) : null}
 
         {!vehiclesQuery.isLoading && !vehiclesQuery.error && vehicleCount > 0 ? (
-          <VehicleList vehicles={vehiclesQuery.data ?? []} onEdit={startEdit} onDelete={setPendingDelete} />
+          <VehicleList
+            vehicles={vehiclesQuery.data ?? []}
+            onEdit={startEdit}
+            onDelete={setPendingDelete}
+            onManageMaintenance={startMaintenance}
+            activeMaintenanceVehicleId={activeMaintenanceVehicle?.id}
+          />
         ) : null}
 
         {isFormOpen ? (
@@ -131,6 +159,10 @@ export function VehiclePanel({ householdId, householdName }: VehiclePanelProps) 
               </button>
             </div>
           </div>
+        ) : null}
+
+        {activeMaintenanceVehicle ? (
+          <MaintenanceEventPanel householdId={householdId} vehicle={activeMaintenanceVehicle} />
         ) : null}
       </div>
     </Panel>

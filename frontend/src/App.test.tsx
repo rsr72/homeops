@@ -52,12 +52,38 @@ describe('HomeOps web UI', () => {
     const vehicleCard = await screen.findByRole('article', { name: /toyota camry/i });
     expect(within(vehicleCard).getByText(/2022/)).toBeInTheDocument();
 
+    await user.click(within(vehicleCard).getByRole('button', { name: /maintenance/i }));
+    await screen.findByText(/toyota camry maintenance/i);
+
+    await user.click(screen.getAllByRole('button', { name: /add event/i })[0]);
+    await user.type(screen.getByLabelText(/service date/i), '2026-08-01');
+    await user.type(screen.getByLabelText(/description/i), 'Oil change');
+    await user.type(screen.getByLabelText(/mileage/i), '12345');
+    await user.type(screen.getByLabelText(/cost/i), '89.99');
+    await user.click(screen.getByRole('button', { name: /create event/i }));
+
+    const maintenanceEventCard = await screen.findByRole('article', { name: /oil change/i });
+    expect(within(maintenanceEventCard).getByText(/12345/)).toBeInTheDocument();
+
+    await user.click(within(maintenanceEventCard).getByRole('button', { name: /edit/i }));
+    await user.clear(screen.getByLabelText(/description/i));
+    await user.type(screen.getByLabelText(/description/i), 'Brake service');
+    await user.click(screen.getByRole('button', { name: /save event/i }));
+
+    const updatedMaintenanceEventCard = await screen.findByRole('article', { name: /brake service/i });
+    expect(updatedMaintenanceEventCard).toBeInTheDocument();
+
+    await user.click(within(updatedMaintenanceEventCard).getByRole('button', { name: /delete/i }));
+    await user.click(screen.getByRole('button', { name: /confirm delete/i }));
+
+    await screen.findByText('No maintenance events yet');
+
     await user.click(within(vehicleCard).getByRole('button', { name: /edit/i }));
     await user.clear(screen.getByLabelText(/^model$/i));
     await user.type(screen.getByLabelText(/^model$/i), 'Corolla');
     await user.click(screen.getByRole('button', { name: /save vehicle/i }));
 
-    expect(await screen.findByText(/toyota corolla/i)).toBeInTheDocument();
+    expect(await screen.findByRole('article', { name: /toyota corolla/i })).toBeInTheDocument();
 
     const updatedCard = await screen.findByRole('article', { name: /toyota corolla/i });
     await user.click(within(updatedCard).getByRole('button', { name: /delete/i }));
@@ -89,5 +115,15 @@ describe('HomeOps web UI', () => {
     await user.click(screen.getByRole('button', { name: /create vehicle/i }));
 
     expect(await screen.findByRole('article', { name: /honda civic/i })).toBeInTheDocument();
+
+    const vehicleCard = await screen.findByRole('article', { name: /honda civic/i });
+    await user.click(within(vehicleCard).getByRole('button', { name: /maintenance/i }));
+    await screen.findByText(/honda civic maintenance/i);
+
+    await user.click(screen.getAllByRole('button', { name: /add event/i })[0]);
+    await user.click(screen.getByRole('button', { name: /create event/i }));
+
+    expect(await screen.findByText('serviceDate is required')).toBeInTheDocument();
+    expect(await screen.findByText('description is required')).toBeInTheDocument();
   });
 });
