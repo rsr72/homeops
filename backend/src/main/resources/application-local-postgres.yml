@@ -1,0 +1,20 @@
+spring:
+  config:
+    activate:
+      on-profile: local-postgres
+  autoconfigure:
+    exclude: []
+  datasource:
+    url: jdbc:postgresql://${HOMEOPS_DB_HOST:localhost}:${HOMEOPS_DB_PORT:5432}/${HOMEOPS_DB_NAME:homeops}
+    username: ${HOMEOPS_DB_USER:homeops}
+    password: ${HOMEOPS_DB_PASSWORD:homeops_dev_password}
+    driver-class-name: org.postgresql.Driver
+
+management:
+  endpoint:
+    health:
+      show-details: always
+      show-components: always
+  health:
+    db:
+      enabled: true
