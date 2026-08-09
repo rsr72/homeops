@@ -16,6 +16,30 @@ Entries should focus on what was done, why it was done, what was learned, and wh
 
 ---
 
+## 2026-08-09 — GitHub Actions Frontend Verification Added
+
+### Context
+
+The HomeOps CI workflow was extended to verify both the Spring Boot backend and the React/TypeScript frontend on pull requests and pushes to `main`.
+
+### What Was Changed
+
+The existing `Java CI` workflow was kept as the single CI entry point. A new independent frontend job now runs `npm ci`, `npm test`, and `npm run build` from the separate `frontend/` workspace using Node 22 and npm caching keyed to `frontend/package-lock.json`.
+
+The backend Maven verification job remained unchanged and still runs `./mvnw verify` from `backend/` on Java 21. No PostgreSQL, Docker, AWS, deployment, or Playwright steps were added to CI.
+
+### Engineering Lesson
+
+For a small MVP, the smallest professional CI improvement is usually to extend the existing workflow rather than create another one. That keeps the repository easier to understand, preserves one place to look for verification status, and makes it obvious that backend and frontend are both first-class parts of the same local product slice.
+
+### Skills Demonstrated
+
+- GitHub Actions workflow design
+- backend and frontend CI separation
+- Node.js and Maven verification strategy
+- repository-local cache configuration
+- documentation of CI status changes
+
 ## 2026-08-09 — Issue #43 First Responsive HomeOps Web UI
 
 ### Context
