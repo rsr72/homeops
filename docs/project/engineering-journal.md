@@ -16,6 +16,44 @@ Entries should focus on what was done, why it was done, what was learned, and wh
 
 ---
 
+## 2026-08-09 — Issue #55 Playwright Browser E2E First Slice
+
+### Context
+
+HomeOps added its first browser end-to-end test layer to validate the real stack path from browser through React/Vite and Spring Boot into PostgreSQL 16.14 persistence.
+
+### What Was Delivered
+
+Playwright was added to the existing `frontend/` workspace as a development-only browser test dependency, with a Chromium-only configuration and one focused E2E spec. The new workflow exercises:
+
+- household creation
+- vehicle creation
+- maintenance event creation
+- browser refresh persistence confirmation
+- maintenance event edit
+- maintenance event delete with confirmation
+- final empty maintenance state confirmation
+
+The E2E slice uses real frontend and backend processes with the `local-postgres` backend profile and the existing Vite `/api` proxy model. PostgreSQL remains an explicit prerequisite managed through the repository's existing Docker Compose flow.
+
+### Test-State and Cleanup Strategy
+
+The first slice avoids destructive database resets and instead uses isolated synthetic test data with unique household naming per run. Cleanup is handled by deleting the created Household through the real API, relying on relational cascade behavior to remove child Vehicle and Maintenance Event records.
+
+### Engineering Lesson
+
+The most effective first E2E layer is a single high-value journey, not a broad suite. It complements unit/service/controller and frontend component/integration tests by proving runtime wiring and persistence behavior without replacing lower-level automated safety nets.
+
+### Skills Demonstrated
+
+- Playwright test architecture
+- browser-level workflow automation
+- runtime orchestration of frontend/backend services
+- deterministic test-data isolation and cleanup
+- practical test-pyramid layering and scope control
+
+---
+
 ## 2026-08-09 — GitHub Actions Frontend Verification Added
 
 ### Context

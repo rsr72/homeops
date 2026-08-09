@@ -34,3 +34,7 @@ frontend/dist/
 frontend/*.tsbuildinfo
 frontend/vite.config.js
 frontend/vite.config.d.ts
+
+# Playwright generated artifacts
+frontend/playwright-report/
+frontend/test-results/
