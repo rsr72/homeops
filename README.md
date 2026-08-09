@@ -29,6 +29,7 @@ The Vite `/api` proxy is used for local development, so no backend CORS change i
 - Responsive UI with lightweight CSS, CSS Modules, and CSS variables.
 - Loading, empty, validation, and API error states.
 - Vitest, React Testing Library, and MSW frontend tests.
+- Playwright Chromium E2E coverage for one real browser journey: Household -> Vehicle -> Maintenance Event create/edit/delete with refresh persistence.
 - Generated frontend artifacts such as `node_modules`, `dist`, and TypeScript build output are excluded from Git.
 
 ## Technology Stack
@@ -93,7 +94,24 @@ Frontend:
 cd frontend
 npm test
 npm run build
+npm run test:e2e
 ```
+
+Playwright first-run browser install:
+
+```bash
+cd frontend
+npx playwright install chromium
+```
+
+Playwright E2E prerequisites:
+
+- PostgreSQL 16.14 must be running through the existing `backend/docker-compose.postgres.yml` flow.
+- `backend/.env.postgres` must exist and contain local development values.
+- `npm run test:e2e` manages Spring Boot (`local-postgres`) and Vite startup and shutdown.
+- Stop manually running backend/frontend processes before using managed E2E startup.
+- The E2E test uses uniquely named synthetic Household data and attempts cleanup by deleting that Household through the real backend API in `finally` behavior.
+- Playwright failure artifacts are generated under `frontend/test-results/` (trace + screenshot on failure), and the HTML report is generated under `frontend/playwright-report/`.
 
 Backend:
 
@@ -105,6 +123,8 @@ cd backend
 ## Current CI Status
 
 GitHub Actions currently runs backend and frontend verification on pull requests and pushes to `main`. The current workflow executes `backend ./mvnw verify` on Java 21 and `frontend npm ci`, `frontend npm test`, and `frontend npm run build` on Node 22.
+
+Playwright E2E is intentionally not a required CI check in this first slice. It is currently positioned as a focused local browser-integration confidence layer while startup/runtime characteristics stabilize.
 
 ## Documentation
 
