@@ -71,7 +71,23 @@ The MVP depends on a small set of external capabilities that may be introduced o
 
 ## AWS Evolution Path
 
-The long-term AWS path should remain high level and implementation-neutral for now:
+The long-term AWS path is now anchored by an accepted initial development architecture decision in ADR-0001:
+
+- [docs/adr/0001-initial-aws-development-architecture.md](../adr/0001-initial-aws-development-architecture.md)
+
+The selected model for development is:
+
+- private S3 origin behind CloudFront for frontend delivery
+- CloudFront path routing with `/*` to S3 and `/api/*` to the backend origin
+- App Runner backend runtime from ECR image
+- private single-AZ RDS PostgreSQL
+- App Runner VPC connector for private database access
+- Secrets Manager and Parameter Store for runtime secrets/configuration
+- CloudWatch for logs and basic alarms
+
+No AWS resources have been provisioned yet. Provisioning remains deferred to later Terraform implementation stories.
+
+The broader AWS path remains:
 
 - web frontend on managed or static hosting
 - application service on a managed container or runtime platform
@@ -139,7 +155,7 @@ The following choices should be formally captured in ADRs before implementation 
 - PostgreSQL as the relational database choice
 - the authentication provider and identity approach
 - the document storage approach
-- the initial AWS deployment model
+- the initial AWS deployment model (selected in ADR-0001)
 
 ## Mermaid Diagram
 

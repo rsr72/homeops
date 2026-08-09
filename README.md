@@ -163,11 +163,21 @@ GitHub Actions currently runs backend and frontend verification on pull requests
 
 Playwright E2E is intentionally not a required CI check in this first slice. It is currently positioned as a focused local browser-integration confidence layer while startup/runtime characteristics stabilize.
 
+## AWS Architecture Status
+
+Issue #59 selected the initial AWS development architecture and documented it in:
+
+- [docs/adr/0001-initial-aws-development-architecture.md](docs/adr/0001-initial-aws-development-architecture.md)
+
+This is a documentation and decision milestone only. No AWS resources have been provisioned yet.
+
 ## Documentation
 
 - Product vision: [docs/product/vision.md](docs/product/vision.md)
 - MVP requirements: [docs/product/mvp-requirements.md](docs/product/mvp-requirements.md)
 - Architecture overview: [docs/architecture/overview.md](docs/architecture/overview.md)
+- ADRs: [docs/adr/README.md](docs/adr/README.md)
+- Initial AWS development architecture decision: [docs/adr/0001-initial-aws-development-architecture.md](docs/adr/0001-initial-aws-development-architecture.md)
 - Engineering journal: [docs/project/engineering-journal.md](docs/project/engineering-journal.md)
 - Modernization skills checklist: [docs/project/modernization-skills-checklist.md](docs/project/modernization-skills-checklist.md)
 - Backend run instructions: [backend/README.md](backend/README.md)

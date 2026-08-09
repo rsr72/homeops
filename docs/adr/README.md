@@ -45,3 +45,8 @@ Use one of the following statuses:
 5. Mark the ADR as `Accepted`, `Superseded`, or `Deprecated` once the decision is settled.
 
 This process is intentionally lightweight so it supports clarity and historical context without adding unnecessary ceremony.
+
+## Current ADRs
+
+- ADR-0001: Initial HomeOps AWS Development Architecture
+	- [0001-initial-aws-development-architecture.md](0001-initial-aws-development-architecture.md)
