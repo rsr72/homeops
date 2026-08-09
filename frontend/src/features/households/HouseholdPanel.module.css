@@ -1,0 +1,53 @@
+.stack {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.error,
+.loading {
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-md);
+  background: var(--panel-muted);
+  color: var(--muted);
+}
+
+.list {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.householdItem {
+  text-align: left;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--panel);
+  padding: var(--space-4);
+  display: grid;
+  gap: var(--space-1);
+}
+
+.active {
+  border-color: rgba(18, 111, 138, 0.55);
+  box-shadow: inset 0 0 0 1px rgba(18, 111, 138, 0.25);
+}
+
+.name {
+  font-weight: 700;
+}
+
+.notes,
+.notesMuted {
+  color: var(--muted);
+  font-size: 0.92rem;
+  line-height: 1.5;
+}
+
+.createBlock {
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--border);
+}
+
+.createTitle {
+  margin: 0 0 var(--space-4);
+  font-size: 0.95rem;
+}
