@@ -26,6 +26,51 @@ Then open:
 http://localhost:8080/actuator/health
 ```
 
+## Backend container image (local validation)
+
+Build the backend image from this directory:
+
+```bash
+docker build -t homeops-backend:local .
+```
+
+Start PostgreSQL first using the existing local Compose setup and `.env.postgres`, then run the backend container with the existing database environment-variable contract.
+
+For Docker Desktop on macOS, use `HOMEOPS_DB_HOST=host.docker.internal` because `localhost` inside the backend container does not resolve to the host PostgreSQL container.
+
+```bash
+docker run --rm --name homeops-backend-local \
+	-p 8080:8080 \
+	-e SPRING_PROFILES_ACTIVE=local-postgres \
+	-e HOMEOPS_DB_HOST=host.docker.internal \
+	-e HOMEOPS_DB_PORT=5432 \
+	-e HOMEOPS_DB_NAME=homeops \
+	-e HOMEOPS_DB_USER=homeops \
+	-e HOMEOPS_DB_PASSWORD=homeops_dev_password \
+	homeops-backend:local
+```
+
+Container health check (Dockerfile `HEALTHCHECK`) probes:
+
+```text
+http://127.0.0.1:8080/actuator/health
+```
+
+Host-side checks:
+
+```bash
+curl -s http://localhost:8080/actuator/health
+docker ps --filter name=homeops-backend-local
+docker logs homeops-backend-local
+docker exec homeops-backend-local id
+```
+
+Notes:
+
+- Keep credentials out of images and source control. Provide secrets only at runtime.
+- Logging remains stdout/stderr for container runtime compatibility.
+- Flyway remains the schema owner and Hibernate remains `ddl-auto: validate` through the `local-postgres` profile.
+
 ## Local PostgreSQL development
 
 Only Docker Compose is supported for local PostgreSQL setup in this repository.

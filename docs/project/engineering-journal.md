@@ -54,6 +54,45 @@ The most effective first E2E layer is a single high-value journey, not a broad s
 
 ---
 
+## 2026-08-09 — Backend Containerization First Slice
+
+### Context
+
+HomeOps introduced a minimal professional containerization baseline for the Spring Boot backend to produce a reproducible deployable image while preserving current local development and test flows.
+
+### What Was Delivered
+
+- Added `backend/Dockerfile` with a multi-stage build.
+- Built the Spring Boot executable JAR inside Docker using the Maven Wrapper.
+- Used Java 21 runtime image for the final container stage.
+- Added a dedicated non-root runtime user.
+- Set an explicit application working directory and exposed port `8080`.
+- Kept JVM and Spring runtime configuration environment-driven.
+- Added Docker `HEALTHCHECK` using `/actuator/health` with an explicit HTTP probe utility available in the runtime image.
+- Added `backend/.dockerignore` to reduce build context and avoid local-secret leakage.
+- Added CI build-only verification so GitHub Actions confirms the backend image builds successfully without push/deploy or cloud credentials.
+
+### Scope and Safety Boundaries
+
+- No frontend containerization.
+- No AWS resources, registry push, deployment, or Terraform.
+- No schema or product behavior changes.
+- Flyway remains the schema owner and Hibernate remains `ddl-auto: validate` under `local-postgres`.
+
+### Engineering Lesson
+
+The best first containerization slice is image reproducibility and runtime contract clarity, not orchestration expansion. By validating a standalone backend container against the existing PostgreSQL local model, HomeOps gains deployable-image confidence while avoiding premature complexity.
+
+### Skills Demonstrated
+
+- Spring Boot containerization design
+- multi-stage Docker build optimization
+- secure runtime defaults (non-root and env-driven secrets)
+- CI container build verification
+- controlled scope delivery aligned to MVP architecture and FinOps constraints
+
+---
+
 ## 2026-08-09 — GitHub Actions Frontend Verification Added
 
 ### Context

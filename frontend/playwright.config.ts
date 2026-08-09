@@ -1,5 +1,7 @@
 import { defineConfig, devices } from '@playwright/test';
 
+const reuseExistingBackendServer = process.env.PLAYWRIGHT_REUSE_EXISTING_BACKEND === 'true';
+
 export default defineConfig({
   testDir: './e2e',
   fullyParallel: false,
@@ -28,7 +30,7 @@ export default defineConfig({
     {
       command: "cd .. && set -a && . ./backend/.env.postgres && set +a && SPRING_PROFILES_ACTIVE=local-postgres ./backend/mvnw -f backend/pom.xml org.springframework.boot:spring-boot-maven-plugin:3.3.3:run",
       url: 'http://127.0.0.1:8080/actuator/health',
-      reuseExistingServer: false,
+      reuseExistingServer: reuseExistingBackendServer,
       timeout: 120_000,
       stdout: 'pipe',
       stderr: 'pipe'
