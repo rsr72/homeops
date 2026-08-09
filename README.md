@@ -88,6 +88,36 @@ Open the Vite local URL shown in the terminal.
 
 ## Verification Commands
 
+Backend container image:
+
+```bash
+cd backend
+docker build -t homeops-backend:local .
+```
+
+Run backend container against existing local PostgreSQL Compose setup:
+
+```bash
+docker run --rm --name homeops-backend-local \
+	-p 8080:8080 \
+	-e SPRING_PROFILES_ACTIVE=local-postgres \
+	-e HOMEOPS_DB_HOST=host.docker.internal \
+	-e HOMEOPS_DB_PORT=5432 \
+	-e HOMEOPS_DB_NAME=homeops \
+	-e HOMEOPS_DB_USER=homeops \
+	-e HOMEOPS_DB_PASSWORD=homeops_dev_password \
+	homeops-backend:local
+```
+
+Container health checks:
+
+```bash
+curl -s http://localhost:8080/actuator/health
+docker ps --filter name=homeops-backend-local
+```
+
+This story does not containerize the frontend and does not introduce AWS runtime resources, image publishing, or deployment automation.
+
 Frontend:
 
 ```bash
@@ -112,6 +142,13 @@ Playwright E2E prerequisites:
 - Stop manually running backend/frontend processes before using managed E2E startup.
 - The E2E test uses uniquely named synthetic Household data and attempts cleanup by deleting that Household through the real backend API in `finally` behavior.
 - Playwright failure artifacts are generated under `frontend/test-results/` (trace + screenshot on failure), and the HTML report is generated under `frontend/playwright-report/`.
+
+Run Playwright unchanged against an already-running backend container:
+
+```bash
+cd frontend
+PLAYWRIGHT_REUSE_EXISTING_BACKEND=true npm run test:e2e
+```
 
 Backend:
 
