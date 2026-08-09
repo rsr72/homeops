@@ -54,6 +54,46 @@ The most effective first E2E layer is a single high-value journey, not a broad s
 
 ---
 
+## 2026-08-09 — Issue #59 Initial AWS Development Architecture Decision
+
+### Context
+
+HomeOps required a first AWS runtime and hosting architecture decision that balances security, simplicity, and low recurring cost for a small controlled MVP development environment.
+
+### What Was Decided
+
+ADR-0001 was accepted to establish the initial AWS development architecture:
+
+- frontend on private S3 origin behind CloudFront
+- CloudFront path routing using `/*` for frontend assets and `/api/*` for backend requests to preserve same-origin browser behavior
+- backend runtime on AWS App Runner using the existing backend Docker image in Amazon ECR
+- private single-AZ RDS PostgreSQL
+- App Runner VPC connector for private database access
+- Secrets Manager for database credentials and SSM Parameter Store for non-secret runtime configuration
+- CloudWatch logs and basic alarms
+- no NAT Gateway in the first slice
+
+### Scope Boundaries
+
+- no AWS resources were provisioned as part of this decision
+- no Terraform was added in this story
+- no application code, test, CI behavior, or product functionality changed
+
+### Cost and Risk Notes
+
+The accepted architecture targets a generally available development-environment cost band around $30-65/month, with lower totals possible when resources are paused or stopped where supported. RDS is expected to be the largest baseline cost driver.
+
+Because authentication and authorization are not yet implemented, this environment is not treated as production-ready for broad public exposure.
+
+### Skills Demonstrated
+
+- architecture option analysis and tradeoff documentation
+- cost-aware AWS runtime selection
+- secure boundary design for private database connectivity
+- ADR-based technical governance
+
+---
+
 ## 2026-08-09 — Backend Containerization First Slice
 
 ### Context
