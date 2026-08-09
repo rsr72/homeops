@@ -194,3 +194,61 @@ Copilot Agent should be treated as an actor with repository capabilities, not me
 ### Follow-Up
 
 Future journal entries should capture meaningful architecture decisions, AWS implementations, Java and Kubernetes learning, CI/CD development, security controls, observability, FinOps decisions, AI integrations, production incidents, performance improvements, Copilot Agent techniques, agent failures and corrections, and lessons learned from operating HomeOps AI.
+
+---
+
+## 2026-08-08 — Architecture, ADRs, and AI Engineering Guardrails
+
+### Context
+
+As HomeOps AI moved from product requirements into architecture planning, the project benefited from a more explicit engineering operating model. The work focused on establishing reusable quality gates, repository standards, and an architecture approach that stayed intentionally simple for the MVP.
+
+### What Was Established
+
+A lightweight Definition of Done was introduced as an exit quality gate so work would not be considered complete without reviewable scope, evidence of testing or validation, and clear documentation expectations.
+
+Repository standards were also formalized to support safe collaboration and review. These included a branch-based workflow, pull-request-based changes, protecting the main branch, and keeping repository changes reviewable before merge.
+
+Repository-level Copilot instructions were added to create persistent AI engineering guardrails so future work would follow the project’s intended standards without repeatedly re-explaining the same expectations.
+
+An ADR process was established to capture durable architecture decisions in a lightweight, reviewable format rather than leaving important choices implicit.
+
+The initial architecture for HomeOps was framed as a deliberately simple modular single-application MVP rather than prematurely adopting microservices or other distributed complexity. This kept the design aligned with the product’s immediate value proposition while leaving room for future growth.
+
+The work also clarified the difference between product requirements and architecture or implementation decisions. Product requirements defined what the system should accomplish; architecture decisions defined how it should be structured and operated at a higher level.
+
+Security and trust boundaries were made explicit around the public application edge, the private database, and private document storage so the architecture reflected the product’s data sensitivity and operational expectations.
+
+Finally, implementation-specific AWS choices such as App Runner versus ECS/Fargate were intentionally deferred until an ADR could evaluate the tradeoffs in a more structured way.
+
+### Engineering Lesson
+
+Small products benefit from lightweight governance that is strong enough to reduce risk but simple enough to remain practical. A Definition of Done, repository standards, Copilot guardrails, and ADRs help create reviewable workstreams without over-engineering the process. They also help prevent premature architecture decisions and encourage a deliberate, evidence-based approach to implementation choices.
+
+### Copilot and Git Lessons
+
+Several practical lessons were reinforced during this work:
+
+- `Keep` accepts Agent changes into the local working tree; it does not commit or push them.
+- Untracked files do not appear in normal `git diff`.
+- `git diff --cached` is useful after staging new files.
+- Always verify the active branch with Git rather than relying on the agent's narrative.
+- A pushed branch is not the same as a branch merged into `main`.
+- Later branches do not automatically contain work from an earlier unmerged branch.
+- AI agents may perform actions beyond the conversational intent, so Git state and diffs are authoritative.
+
+### Interview / Portfolio Example
+
+> I helped establish a lightweight engineering operating model for HomeOps AI by defining a Definition of Done, repository standards, persistent Copilot instructions, and an ADR process. I also shaped the initial architecture as a deliberately simple modular MVP with clear trust boundaries between the public application edge, private database, and private document storage. When working with an AI coding agent, I verified actual Git state and diffs rather than relying on narrative summaries, which helped ensure that changes stayed within scope and remained reviewable.
+
+### Skills Demonstrated
+
+- engineering process design
+- Definition of Done and Definition of Ready
+- repository governance
+- Git workflow discipline
+- architecture decision documentation
+- secure-by-design system thinking
+- AI-assisted engineering governance
+- technical communication and documentation
+- change review and risk management
