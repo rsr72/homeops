@@ -348,3 +348,48 @@ Upgrading the Copilot plan restored capacity, but the important lesson was not s
 - AI FinOps / usage governance
 - graceful degradation of engineering tooling
 - human-in-the-loop change control
+
+---
+
+## 2026-08-08 — FinOps Guardrails Before Cloud Provisioning
+
+### Context
+
+Before HomeOps provisions recurring AWS infrastructure, the project completed its first explicit cloud-cost governance artifact. The goal was to maximize AWS learning while preventing experimentation from turning into uncontrolled recurring spend.
+
+### What Was Established
+
+The MVP now has a development cost target of approximately $25-$50 per month, with $50 treated as an escalation and review threshold rather than a falsely guaranteed hard cap. Budget alerts are expected before the threshold is reached, and major resources require cost-allocation tags.
+
+The guardrails establish a local-first development posture, ephemeral-resource and Terraform cleanup expectations, and post-deployment verification of what AWS resources were actually created and what they are expected to cost on a recurring basis.
+
+High-risk cost areas are called out explicitly, including NAT Gateway, EKS, RDS, load balancers, data transfer, AI/document-processing services, storage/log retention, and idle resources. Cost is also now an explicit architecture and ADR decision factor, and premature multi-AZ, multi-region, HA, and production-scale infrastructure are discouraged for the MVP.
+
+### Engineering Lessons
+
+- FinOps begins during architecture and backlog planning, not after the first unexpectedly large cloud bill.
+- A budget alert is a detection/control mechanism, not necessarily an automatic spending stop; documentation should not imply stronger enforcement than exists.
+- Local-first development reduces both cloud cost and operational complexity while the application is still changing rapidly.
+- Infrastructure work should include a verification step after deployment: inspect what was actually created, not just what the IaC plan intended to create.
+- Cleanup is part of the lifecycle of ephemeral infrastructure and should be treated as completion criteria rather than optional housekeeping.
+- Cost belongs in architecture tradeoffs alongside security, reliability, performance, and maintainability.
+
+### Interview / Portfolio Example
+
+> I established AWS FinOps guardrails before provisioning recurring cloud infrastructure for a SaaS project. I defined an MVP development budget, budget-alert thresholds, mandatory cost tags, ephemeral-resource cleanup rules, and post-deployment cost verification. I also made cloud cost an explicit ADR factor and identified common cost traps such as NAT Gateway, EKS, RDS, load balancers, data transfer, AI services, and unbounded log retention.
+
+### Skills Demonstrated
+
+- AWS FinOps
+- cloud cost governance
+- AWS Budgets planning
+- resource tagging strategy
+- infrastructure lifecycle management
+- Terraform cleanup discipline
+- architecture tradeoff analysis
+- cost-aware cloud design
+- operational risk management
+
+### Next Phase
+
+With product scope, architecture, ADRs, threat modeling, repository governance, and AWS cost guardrails established, HomeOps is ready to move from foundation documentation into implementation. The first implementation story is Issue #25: scaffold the Java 21 / Spring Boot backend. The goal is to keep that scaffold deliberately small and use it as the base for CI, PostgreSQL, Household, and Vehicle stories.
