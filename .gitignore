@@ -25,3 +25,12 @@ replay_pid*
 
 # Local PostgreSQL development environment
 backend/.env.postgres
+
+# Frontend generated files
+frontend/node_modules/
+frontend/dist/
+
+# Frontend TypeScript build artifacts
+frontend/*.tsbuildinfo
+frontend/vite.config.js
+frontend/vite.config.d.ts

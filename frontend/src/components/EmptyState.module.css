@@ -1,0 +1,29 @@
+.empty {
+  display: grid;
+  gap: var(--space-3);
+  place-items: start;
+  padding: var(--space-6);
+  border-radius: var(--radius-lg);
+  background: linear-gradient(180deg, rgba(18, 111, 138, 0.05), rgba(18, 111, 138, 0.02));
+  border: 1px dashed rgba(18, 111, 138, 0.18);
+}
+
+.title {
+  margin: 0;
+  font-size: 1.05rem;
+}
+
+.description {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.6;
+}
+
+.action {
+  border: 0;
+  border-radius: 999px;
+  background: var(--primary);
+  color: #fff;
+  padding: 0.8rem 1rem;
+  font-weight: 700;
+}

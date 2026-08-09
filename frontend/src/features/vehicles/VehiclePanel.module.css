@@ -1,0 +1,70 @@
+.stack {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.addButton {
+  border: 0;
+  border-radius: 999px;
+  background: var(--primary);
+  color: #fff;
+  padding: 0.75rem 1rem;
+  font-weight: 700;
+}
+
+.loading {
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-md);
+  background: var(--panel-muted);
+  color: var(--muted);
+}
+
+.formCard {
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--border);
+}
+
+.formTitle {
+  margin: 0 0 var(--space-4);
+  font-size: 1rem;
+}
+
+.confirmDelete {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-4);
+  padding: var(--space-4);
+  border-radius: var(--radius-md);
+  border: 1px solid rgba(180, 35, 24, 0.2);
+  background: var(--danger-soft);
+  color: #7a231d;
+}
+
+.confirmDelete p {
+  margin: var(--space-1) 0 0;
+}
+
+.confirmActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.confirmPrimary,
+.confirmSecondary {
+  border-radius: 999px;
+  padding: 0.7rem 0.95rem;
+  border: 0;
+  font-weight: 700;
+}
+
+.confirmPrimary {
+  background: var(--danger);
+  color: #fff;
+}
+
+.confirmSecondary {
+  background: #fff;
+  color: var(--danger);
+}
