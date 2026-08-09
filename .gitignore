@@ -38,3 +38,17 @@ frontend/vite.config.d.ts
 # Playwright generated artifacts
 frontend/playwright-report/
 frontend/test-results/
+
+# Terraform generated and sensitive local files
+infra/terraform/.terraform/
+infra/terraform/*.tfstate
+infra/terraform/*.tfstate.*
+infra/terraform/crash.log
+infra/terraform/crash.*.log
+infra/terraform/override.tf
+infra/terraform/override.tf.json
+infra/terraform/*_override.tf
+infra/terraform/*_override.tf.json
+infra/terraform/*.tfvars
+!infra/terraform/*.tfvars.example
+!infra/terraform/environments/*.tfvars.example

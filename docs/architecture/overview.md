@@ -87,6 +87,8 @@ The selected model for development is:
 
 No AWS resources have been provisioned yet. Provisioning remains deferred to later Terraform implementation stories.
 
+Issue #61 defines the first Terraform foundation contracts under `infra/terraform/` while intentionally avoiding provisioning and runtime deployment.
+
 The broader AWS path remains:
 
 - web frontend on managed or static hosting

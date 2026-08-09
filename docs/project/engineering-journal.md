@@ -16,6 +16,49 @@ Entries should focus on what was done, why it was done, what was learned, and wh
 
 ---
 
+## 2026-08-09 — Issue #61 Terraform AWS Development Foundation
+
+### Context
+
+HomeOps began its first infrastructure-as-code slice after ADR-0001 was accepted. The goal was to define a minimal Terraform baseline for AWS development without provisioning runtime services or introducing avoidable recurring cost.
+
+### What Was Delivered
+
+- Added a single-root Terraform foundation under `infra/terraform/`.
+- Defined version constraints, provider constraints, and a reusable naming and tagging contract.
+- Defined development VPC and private subnet topology across at least two availability zones.
+- Defined private-only networking with no public subnets, Internet Gateway, or NAT Gateway.
+- Added security-group contracts for future App Runner connector and private PostgreSQL access.
+- Added RDS DB subnet-group contract.
+- Added a metadata-only Secrets Manager secret contract for DB credentials with no secret value.
+- Added SSM Parameter Store Standard parameters for non-secret runtime configuration.
+- Added outputs to unblock later RDS, ECR, and App Runner Terraform stories.
+- Added lightweight CI validation (`fmt`, `init -backend=false`, `validate`) without AWS credentials, `plan`, or `apply`.
+
+### Scope Boundaries
+
+- No `terraform apply` was run.
+- No AWS resources were provisioned in this story.
+- No RDS instance, ECR repository, App Runner service, S3, or CloudFront resources were created.
+- Remote state and locking were intentionally deferred.
+
+### Engineering Lessons (Building on Issue #59)
+
+- ADR-first architecture decisions reduce rework before IaC implementation begins.
+- Foundation-first Terraform slices keep cost and risk low while creating clear contracts for later stories.
+- App Runner-to-RDS security should be codified as explicit SG-to-SG rules from the start.
+- Secrets handling should begin with metadata contracts and strict no-secrets-in-repo discipline.
+- The most meaningful early cost control is deferring stateful runtime resources until they are truly needed.
+
+### Skills Demonstrated
+
+- Terraform foundation design and scope control
+- cost-aware cloud architecture implementation
+- network and security boundary codification
+- CI validation integration for IaC without deployment access
+
+---
+
 ## 2026-08-09 — Issue #55 Playwright Browser E2E First Slice
 
 ### Context

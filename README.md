@@ -171,6 +171,12 @@ Issue #59 selected the initial AWS development architecture and documented it in
 
 This is a documentation and decision milestone only. No AWS resources have been provisioned yet.
 
+Issue #61 adds the first Terraform foundation under `infra/terraform/` for VPC, private subnet, security-group, DB subnet-group, and runtime configuration contracts.
+
+- The Terraform workflow is local-state only for this initial slice.
+- Remote state and locking are intentionally deferred.
+- This repository change defines infrastructure only and does not provision resources.
+
 ## Documentation
 
 - Product vision: [docs/product/vision.md](docs/product/vision.md)
