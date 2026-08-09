@@ -252,3 +252,99 @@ Several practical lessons were reinforced during this work:
 - AI-assisted engineering governance
 - technical communication and documentation
 - change review and risk management
+
+---
+
+## 2026-08-08 — Backlog Hygiene, Story Readiness, and Project Governance
+
+### Context
+
+Before beginning implementation, the HomeOps backlog and recently merged foundation work were reviewed against actual GitHub issue state rather than assuming merged pull requests had automatically completed their corresponding work items.
+
+### What Was Improved
+
+Several completed foundation issues were still open because their pull requests had been merged without issue-closing references. Those issues were explicitly reconciled and closed as completed. The review also found that the ADR-template issue had been merged but did not fully satisfy its original acceptance criteria: the template was stored under `docs/architecture/` while the issue required a dedicated `docs/adr/` location and usage guidance. Rather than quietly changing the acceptance criteria after implementation, the issue was left open and updated to show the remaining gap.
+
+The initial product backlog was then converted from broad ideas into dependency-aware implementation stories. Sprint 1 stories were written with business value, bounded scope, testable acceptance criteria, security/data notes, architecture context, testing expectations, documentation expectations, and completed Definition of Ready checks.
+
+The first implementation sequence was established as:
+
+1. Scaffold the Java 21 / Spring Boot backend.
+2. Add GitHub Actions Java CI.
+3. Add a local PostgreSQL development environment.
+4. Implement the Household domain foundation.
+5. Implement the Vehicle domain foundation.
+
+Later work was explicitly sequenced behind prerequisites such as threat modeling before sensitive document/auth flows and AWS cost guardrails before recurring cloud infrastructure.
+
+### Engineering Lessons
+
+- A merged pull request and a completed backlog item are related but not identical states; issue and project hygiene should be reconciled deliberately.
+- Acceptance criteria should not be rewritten after implementation merely to make completed work appear compliant. Gaps should remain visible and be finished or consciously re-scoped.
+- A professional backlog expresses dependencies and risk sequencing, not just priority order.
+- Definition of Ready checks are most useful when they are applied to real implementation stories before coding begins.
+- Security and FinOps work can be sequencing constraints: threat modeling should precede sensitive data paths, and cost guardrails should precede recurring cloud spend.
+- AI-assisted development benefits from the same backlog discipline as human-only development; clearer stories produce safer and more bounded agent tasks.
+
+### Interview / Portfolio Example
+
+> I reconciled GitHub issue state against merged pull requests, identified an ADR acceptance-criteria gap rather than masking it, and converted the product roadmap into a dependency-aware implementation backlog. I used a Definition of Ready to make Sprint 1 stories implementation-ready, including measurable acceptance criteria, security considerations, test expectations, and explicit dependencies. I also sequenced threat modeling and AWS cost controls ahead of higher-risk implementation work.
+
+### Skills Demonstrated
+
+- Agile backlog refinement and prioritization
+- story decomposition
+- dependency mapping
+- Definition of Ready application
+- GitHub issue / pull-request governance
+- acceptance-criteria integrity
+- security-by-design sequencing
+- FinOps-aware planning
+- AI-agent task design
+- professional SDLC hygiene
+
+---
+
+## 2026-08-08 — Threat Modeling and AI Capacity as Engineering Constraints
+
+### Context
+
+Before implementing authentication, document upload, or sensitive household-data paths, HomeOps completed an initial MVP threat model. During the same work, GitHub Copilot Agent exhausted its included usage allowance and became temporarily unavailable until the development plan was upgraded.
+
+### Security Work Completed
+
+The threat model identified the system's key assets, actors, and trust boundaries and rated major threats using a lightweight High / Medium / Low approach. Broken household authorization and cross-household data access were treated as High risk. The model also covered document-upload abuse, API and input-validation risks, secrets/configuration exposure, privacy-safe logging, backup/recovery, accidental exposure of internal health/debug endpoints, and future AI/OCR processing risks.
+
+The highest-risk areas were connected to explicit test expectations, especially denial of cross-household access and safe handling of uploaded content. Durable security choices such as authentication provider, document scanning, edge/rate-limiting controls, and secrets management were intentionally left for later ADRs rather than being silently embedded in the threat model.
+
+### AI Engineering / FinOps Lesson
+
+AI-agent capacity is an engineering resource with cost and quota constraints. When the Copilot quota was exhausted, the project did not need to stop: planning, review, Git verification, and manual repository work remained viable. The experience reinforced a model-routing approach in which expensive agentic execution is used where repository-local automation creates real value, while planning and review can happen outside the coding agent.
+
+Upgrading the Copilot plan restored capacity, but the important lesson was not simply to buy more quota. AI usage should be treated similarly to other engineering resources: understand the cost model, choose the least expensive capability that reliably completes the task, bound agent work tightly, and preserve a graceful human-controlled fallback path.
+
+### Engineering Lessons
+
+- Threat modeling is most valuable before sensitive features are implemented, not after production exposure exists.
+- Multi-tenant authorization should be treated as a primary security boundary and tested explicitly.
+- Security requirements and implementation choices are different artifacts; durable implementation decisions may deserve ADRs.
+- AI agents should not become a single point of failure for the development process.
+- Model selection, context size, agent autonomy, and quota consumption are practical AI FinOps concerns.
+- Human-controlled Git workflows provide continuity and governance when an AI tool is unavailable or behaves unexpectedly.
+
+### Interview / Portfolio Example
+
+> Before implementing sensitive SaaS workflows, I created a lightweight threat model that identified trust boundaries, ranked risks, and made cross-tenant authorization a high-risk testable control. During the same project, an AI coding-agent quota was exhausted, so I treated agent capacity as an engineering/FinOps constraint rather than a blocker: the workflow fell back to human-controlled planning and Git operations, and I refined model-routing and agent-use practices to reserve expensive inference for work where repository-local automation added value.
+
+### Skills Demonstrated
+
+- application threat modeling
+- multi-tenant security design
+- secure file-upload planning
+- security test planning
+- privacy-aware observability
+- architecture decision governance
+- AI-assisted engineering operations
+- AI FinOps / usage governance
+- graceful degradation of engineering tooling
+- human-in-the-loop change control
