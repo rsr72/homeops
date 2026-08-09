@@ -14,6 +14,17 @@ Target professional positioning:
 
 > Senior/lead engineer with deep enterprise infrastructure and automation experience who can design, build, secure, deploy, and operate modern cloud applications and effectively use AI agents throughout the engineering lifecycle.
 
+## Completed Foundation To Date
+
+The following parts of the modernization story are already real and should be treated as completed foundation, even though the full project still has major open areas.
+
+- Product and engineering documentation are in place and actively maintained.
+- The Spring Boot backend, REST API, PostgreSQL local development flow, Flyway migrations, Spring Data JPA / Hibernate persistence, persisted Household domain, persisted household-scoped Vehicle domain, and backend automated tests are in place.
+- GitHub CI foundation is in place for the backend delivery path.
+- The React + TypeScript browser frontend, frontend automated tests, Vite development/build tooling, npm workspace with committed `package-lock.json`, TanStack Query, React Hook Form, URL-driven household selection, and the first full-stack browser-to-PostgreSQL workflow are in place.
+- Generated frontend artifacts such as `node_modules`, `dist`, and TypeScript build output remain excluded from Git.
+- The following areas remain intentionally incomplete: authentication, authorization, AWS deployment, documents/OCR, maintenance/reminders, backend containerization, Playwright/E2E, mobile, payments, and production operations.
+
 ## End-of-Project Validation Checklist
 
 ### 1. System Design Depth
@@ -251,6 +262,26 @@ Use familiar concepts as anchors while learning the new stack:
 - A Java source filename and a package-private top-level class name can technically differ, but keeping them aligned is important for readability and tooling.
 - `./mvnw clean test` is useful when verifying that stale build artifacts are not hiding a problem.
 - AI-generated scaffolding should be reviewed at the file-system and Git-diff level, not accepted based only on the agent's summary.
+
+## Frontend / Browser Lessons to Preserve
+
+- React is the UI and component framework for the browser experience.
+- TypeScript adds static typing to frontend JavaScript and helps keep the browser code easier to refactor safely.
+- Vite provides the frontend development server, fast development workflow, `/api` proxying, and production build tooling.
+- npm manages frontend dependencies, and `package-lock.json` should be committed so installs resolve reproducibly.
+- TanStack Query manages remote or server state rather than duplicating API state manually in components.
+- React Hook Form manages form state while backend Bean Validation remains the authoritative validation source.
+- MSW allows frontend tests to exercise realistic HTTP behavior without requiring the live backend for every test.
+- Vitest and React Testing Library provide fast automated browser-oriented testing.
+- The Vite development proxy allows `/api` requests to reach Spring Boot locally without introducing unnecessary CORS configuration.
+- Generated artifacts such as `node_modules`, `dist`, `tsbuildinfo`, and generated Vite output should not be committed.
+- URL-driven application state can make important context reload-safe and shareable.
+- Issue #43 represents the first complete browser-to-database vertical slice for HomeOps.
+
+## HomeOps SDLC Lesson
+
+- HomeOps should continue to move in small professional vertical slices: requirements or story -> plan and review -> implementation -> automated tests -> real runtime validation -> Git review -> pull request -> merge -> documentation and learning update.
+- AI accelerates implementation, but architecture, scope boundaries, validation, security, cost awareness, review, and acceptance remain engineering responsibilities.
 
 ## AWS Learning Roadmap
 

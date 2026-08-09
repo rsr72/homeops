@@ -42,6 +42,24 @@ Core responsibilities are:
 - object storage holds uploaded files and documents
 - reminder processing runs as scheduled work within the same application boundary for MVP
 
+## Current Validated Browser-to-Database Slice
+
+Issue #43 established the first verified browser path through the HomeOps stack.
+
+- Browser -> React / TypeScript -> Vite development proxy -> Spring Boot REST API -> service/domain layer -> Spring Data JPA / Hibernate -> Flyway-managed PostgreSQL 16.14
+- Local browser development uses the Vite `/api` proxy, so no backend CORS change was required for this slice.
+- The current frontend is a separate `frontend/` workspace with TanStack Query for server state, React Hook Form for forms, and Vitest plus React Testing Library plus MSW for automated browser-side testing.
+
+```mermaid
+graph LR
+    Browser[Browser] --> React[React / TypeScript]
+    React --> Vite[Vite /api proxy]
+    Vite --> API[Spring Boot REST API]
+    API --> Domain[Service / domain layer]
+    Domain --> JPA[Spring Data JPA / Hibernate]
+    JPA --> DB[(Flyway-managed PostgreSQL 16.14)]
+```
+
 ## External Systems
 
 The MVP depends on a small set of external capabilities that may be introduced over time:
