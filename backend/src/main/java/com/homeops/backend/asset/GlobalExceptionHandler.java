@@ -24,6 +24,16 @@ public class GlobalExceptionHandler {
         return buildResponse(HttpStatus.BAD_REQUEST, "INVALID_REQUEST", exception.getMessage());
     }
 
+    @ExceptionHandler(com.homeops.backend.household.HouseholdNotFoundException.class)
+    public ResponseEntity<ApiErrorResponse> handleHouseholdNotFound(com.homeops.backend.household.HouseholdNotFoundException exception) {
+        return buildResponse(HttpStatus.NOT_FOUND, "NOT_FOUND", exception.getMessage());
+    }
+
+    @ExceptionHandler(com.homeops.backend.household.InvalidHouseholdRequestException.class)
+    public ResponseEntity<ApiErrorResponse> handleInvalidHouseholdRequest(com.homeops.backend.household.InvalidHouseholdRequestException exception) {
+        return buildResponse(HttpStatus.BAD_REQUEST, "INVALID_REQUEST", exception.getMessage());
+    }
+
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<ApiErrorResponse> handleValidation(MethodArgumentNotValidException exception) {
         List<ApiValidationError> validationErrors = exception.getBindingResult()

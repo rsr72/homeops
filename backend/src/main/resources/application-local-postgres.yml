@@ -9,6 +9,16 @@ spring:
     username: ${HOMEOPS_DB_USER:homeops}
     password: ${HOMEOPS_DB_PASSWORD:homeops_dev_password}
     driver-class-name: org.postgresql.Driver
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    open-in-view: false
+    properties:
+      hibernate:
+        jdbc:
+          time_zone: UTC
+  flyway:
+    enabled: true
 
 management:
   endpoint:
