@@ -1,0 +1,20 @@
+# Copy this file to dev.tfvars for local planning.
+# Do not commit dev.tfvars.
+
+aws_region  = "us-east-2"
+project     = "homeops"
+environment = "dev"
+owner       = "homeops"
+purpose     = "mvp"
+
+# Keep private-only networking for Issue #61.
+vpc_cidr             = "10.42.0.0/20"
+private_subnet_cidrs = ["10.42.0.0/24", "10.42.1.0/24"]
+
+# Optional: pin explicit AZs in your account and region.
+# availability_zones = ["us-east-2a", "us-east-2b"]
+
+db_name             = "homeops"
+db_port             = 5432
+db_host_placeholder = "set-by-rds-story"
+spring_profile      = "aws-dev"
