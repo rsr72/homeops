@@ -252,3 +252,53 @@ Several practical lessons were reinforced during this work:
 - AI-assisted engineering governance
 - technical communication and documentation
 - change review and risk management
+
+---
+
+## 2026-08-08 — Backlog Hygiene, Story Readiness, and Project Governance
+
+### Context
+
+Before beginning implementation, the HomeOps backlog and recently merged foundation work were reviewed against actual GitHub issue state rather than assuming merged pull requests had automatically completed their corresponding work items.
+
+### What Was Improved
+
+Several completed foundation issues were still open because their pull requests had been merged without issue-closing references. Those issues were explicitly reconciled and closed as completed. The review also found that the ADR-template issue had been merged but did not fully satisfy its original acceptance criteria: the template was stored under `docs/architecture/` while the issue required a dedicated `docs/adr/` location and usage guidance. Rather than quietly changing the acceptance criteria after implementation, the issue was left open and updated to show the remaining gap.
+
+The initial product backlog was then converted from broad ideas into dependency-aware implementation stories. Sprint 1 stories were written with business value, bounded scope, testable acceptance criteria, security/data notes, architecture context, testing expectations, documentation expectations, and completed Definition of Ready checks.
+
+The first implementation sequence was established as:
+
+1. Scaffold the Java 21 / Spring Boot backend.
+2. Add GitHub Actions Java CI.
+3. Add a local PostgreSQL development environment.
+4. Implement the Household domain foundation.
+5. Implement the Vehicle domain foundation.
+
+Later work was explicitly sequenced behind prerequisites such as threat modeling before sensitive document/auth flows and AWS cost guardrails before recurring cloud infrastructure.
+
+### Engineering Lessons
+
+- A merged pull request and a completed backlog item are related but not identical states; issue and project hygiene should be reconciled deliberately.
+- Acceptance criteria should not be rewritten after implementation merely to make completed work appear compliant. Gaps should remain visible and be finished or consciously re-scoped.
+- A professional backlog expresses dependencies and risk sequencing, not just priority order.
+- Definition of Ready checks are most useful when they are applied to real implementation stories before coding begins.
+- Security and FinOps work can be sequencing constraints: threat modeling should precede sensitive data paths, and cost guardrails should precede recurring cloud spend.
+- AI-assisted development benefits from the same backlog discipline as human-only development; clearer stories produce safer and more bounded agent tasks.
+
+### Interview / Portfolio Example
+
+> I reconciled GitHub issue state against merged pull requests, identified an ADR acceptance-criteria gap rather than masking it, and converted the product roadmap into a dependency-aware implementation backlog. I used a Definition of Ready to make Sprint 1 stories implementation-ready, including measurable acceptance criteria, security considerations, test expectations, and explicit dependencies. I also sequenced threat modeling and AWS cost controls ahead of higher-risk implementation work.
+
+### Skills Demonstrated
+
+- Agile backlog refinement and prioritization
+- story decomposition
+- dependency mapping
+- Definition of Ready application
+- GitHub issue / pull-request governance
+- acceptance-criteria integrity
+- security-by-design sequencing
+- FinOps-aware planning
+- AI-agent task design
+- professional SDLC hygiene
