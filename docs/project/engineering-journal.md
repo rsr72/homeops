@@ -16,6 +16,52 @@ Entries should focus on what was done, why it was done, what was learned, and wh
 
 ---
 
+## 2026-08-09 — Issue #43 First Responsive HomeOps Web UI
+
+### Context
+
+Issue #43 delivered the first browser-based HomeOps workflow and was merged after end-to-end validation against PostgreSQL 16.14.
+
+### What Was Delivered
+
+The new frontend is a separate `frontend/` workspace built with React, TypeScript, Vite, npm, TanStack Query, React Hook Form, Vitest, React Testing Library, and MSW. The browser UI now supports URL-driven household selection, household creation from an empty database, household summary display, and household-scoped vehicle create, edit, delete, and refresh flows.
+
+The browser talks to the Spring Boot backend through the Vite `/api` proxy, so local development did not require a backend CORS change. Generated frontend artifacts remain excluded from Git, while `package-lock.json` is committed for reproducible dependency resolution.
+
+### Verified End-to-End Path
+
+Browser -> React / TypeScript -> Vite development proxy -> Spring Boot REST API -> service/domain layer -> Spring Data JPA / Hibernate -> Flyway-managed PostgreSQL 16.14
+
+### Validation Evidence
+
+- frontend npm tests passed
+- frontend production build passed
+- backend `./mvnw verify` passed with PostgreSQL stopped
+- PostgreSQL 16.14 local runtime was validated
+- the browser created a Household from an empty database
+- Household selection persisted through the URL across refresh
+- the browser created, edited, and deleted a Vehicle
+- the backend API confirmed Vehicle deletion
+- the browser returned to the correct empty Vehicle state after refresh
+- the frontend, backend, and PostgreSQL were stopped cleanly
+
+### Engineering Lessons
+
+This issue reinforced that the first useful frontend slice should be a browser-to-database vertical slice rather than a decorative shell. URL-driven application state makes important context reload-safe and shareable, TanStack Query keeps remote state out of ad hoc component state, React Hook Form keeps forms lightweight while backend Bean Validation stays authoritative, and MSW plus Vitest provide realistic browser-level feedback without depending on the live backend for every test.
+
+The work also reinforced the broader SDLC pattern HomeOps should continue using: requirements or story -> plan and review -> implementation -> automated tests -> real runtime validation -> Git review -> pull request -> merge -> documentation and learning update. AI can accelerate implementation, but architecture, scope boundaries, validation, security, cost awareness, review, and acceptance remain engineering responsibilities.
+
+### Skills Demonstrated
+
+- browser-first product slicing
+- React and TypeScript frontend engineering
+- Vite-based local development and build tooling
+- API proxy-based local integration
+- browser workflow validation against a real database
+- frontend testing with Vitest, React Testing Library, and MSW
+- reusable UI state management and form handling
+- documentation of a merged vertical slice
+
 ## 2026-08-08 — AI-Assisted MVP Requirements Workflow
 
 ### Context
