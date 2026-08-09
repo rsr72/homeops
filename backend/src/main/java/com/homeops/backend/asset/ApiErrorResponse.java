@@ -10,11 +10,11 @@ public record ApiErrorResponse(
         String message,
         List<ApiValidationError> validationErrors
 ) {
-    static ApiErrorResponse of(Instant timestamp, int status, String error, String message) {
+    public static ApiErrorResponse of(Instant timestamp, int status, String error, String message) {
         return new ApiErrorResponse(timestamp, status, error, message, List.of());
     }
 
-    static ApiErrorResponse of(
+    public static ApiErrorResponse of(
             Instant timestamp,
             int status,
             String error,
