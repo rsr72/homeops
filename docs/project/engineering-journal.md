@@ -16,6 +16,45 @@ Entries should focus on what was done, why it was done, what was learned, and wh
 
 ---
 
+## 2026-08-09 — Issue #62 Private RDS PostgreSQL Development Database
+
+### Context
+
+HomeOps progressed from Terraform foundation contracts to the first concrete database runtime definition for AWS development: a private RDS PostgreSQL instance aligned to ADR-0001 security and cost constraints.
+
+### What Was Delivered
+
+- Added Terraform configuration for one private single-AZ RDS PostgreSQL development instance.
+- Kept networking and access model private-only using the existing DB subnet group and RDS security group.
+- Preserved SG-to-SG PostgreSQL access from the future App Runner connector security group only.
+- Configured storage and lifecycle defaults for a low-cost development profile.
+- Switched DB host SSM parameter from placeholder to the provisioned RDS endpoint contract.
+- Exposed RDS endpoint and identifier outputs needed by future App Runner integration work.
+
+### Security and Credential Model
+
+- Enabled RDS-managed master password storage in Secrets Manager.
+- Avoided Terraform password generation and avoided committing credentials in source or tfvars.
+- Kept the database non-public (`publicly_accessible = false`) with no CIDR-based PostgreSQL ingress.
+
+### Cost and Lifecycle Notes
+
+- Selected a cost-conscious baseline (`db.t4g.micro`, gp3, 20 GiB with capped autoscaling).
+- Kept deletion protection disabled and `skip_final_snapshot = true` for intentional development teardown.
+- Maintained backup retention and fixed maintenance/backup windows for practical recoverability.
+
+### Validation Boundary
+
+Issue #62 follows a strict checkpoint workflow: `terraform fmt`, `init`, `validate`, identity/region confirmation, and `terraform plan` only. No `terraform apply` is performed without explicit approval.
+
+### Skills Demonstrated
+
+- incremental Terraform delivery from contracts to first managed data service
+- secure credential handling with managed AWS secrets
+- pragmatic dev-environment lifecycle and cost tradeoff management
+
+---
+
 ## 2026-08-09 — Issue #61 Terraform AWS Development Foundation
 
 ### Context

@@ -16,5 +16,4 @@ private_subnet_cidrs = ["10.42.0.0/24", "10.42.1.0/24"]
 
 db_name             = "homeops"
 db_port             = 5432
-db_host_placeholder = "set-by-rds-story"
 spring_profile      = "aws-dev"

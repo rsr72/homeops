@@ -173,9 +173,11 @@ This is a documentation and decision milestone only. No AWS resources have been 
 
 Issue #61 adds the first Terraform foundation under `infra/terraform/` for VPC, private subnet, security-group, DB subnet-group, and runtime configuration contracts.
 
+Issue #62 extends the Terraform scope by defining the first private RDS PostgreSQL development database configuration in that existing foundation.
+
 - The Terraform workflow is local-state only for this initial slice.
 - Remote state and locking are intentionally deferred.
-- This repository change defines infrastructure only and does not provision resources.
+- This repository change defines infrastructure and planning checkpoints only; no resources are provisioned until an explicit `terraform apply` approval.
 
 ## Documentation
 

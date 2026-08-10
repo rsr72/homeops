@@ -89,6 +89,8 @@ No AWS resources have been provisioned yet. Provisioning remains deferred to lat
 
 Issue #61 defines the first Terraform foundation contracts under `infra/terraform/` while intentionally avoiding provisioning and runtime deployment.
 
+Issue #62 adds the first private RDS PostgreSQL development database definition into that Terraform foundation while preserving the no-provisioning-without-apply workflow.
+
 The broader AWS path remains:
 
 - web frontend on managed or static hosting
