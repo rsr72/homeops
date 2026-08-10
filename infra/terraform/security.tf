@@ -4,7 +4,6 @@ resource "aws_security_group" "apprunner_vpc_connector" {
   vpc_id      = aws_vpc.dev.id
 
   ingress = []
-  egress  = []
 
   tags = {
     Name = "${local.name_prefix}-apprunner-vpc-connector-sg"
@@ -16,8 +15,7 @@ resource "aws_security_group" "rds" {
   description = "Restricts PostgreSQL access to the App Runner connector SG"
   vpc_id      = aws_vpc.dev.id
 
-  ingress = []
-  egress  = []
+  egress = []
 
   tags = {
     Name = "${local.name_prefix}-rds-sg"

@@ -44,8 +44,38 @@ output "db_subnet_group_name" {
 }
 
 output "db_credentials_secret_arn" {
-  description = "Secrets Manager ARN for DB credentials contract"
-  value       = aws_secretsmanager_secret.db_credentials.arn
+  description = "RDS-managed Secrets Manager ARN for DB credentials"
+  value       = aws_db_instance.main.master_user_secret[0].secret_arn
+}
+
+output "rds_instance_identifier" {
+  description = "RDS instance identifier"
+  value       = aws_db_instance.main.identifier
+}
+
+output "rds_instance_arn" {
+  description = "RDS instance ARN"
+  value       = aws_db_instance.main.arn
+}
+
+output "rds_endpoint" {
+  description = "RDS endpoint address and port"
+  value       = aws_db_instance.main.endpoint
+}
+
+output "rds_endpoint_address" {
+  description = "RDS endpoint address for application connectivity"
+  value       = aws_db_instance.main.address
+}
+
+output "rds_endpoint_port" {
+  description = "RDS endpoint port for application connectivity"
+  value       = aws_db_instance.main.port
+}
+
+output "rds_hosted_zone_id" {
+  description = "RDS hosted zone ID"
+  value       = aws_db_instance.main.hosted_zone_id
 }
 
 output "ssm_parameter_names" {

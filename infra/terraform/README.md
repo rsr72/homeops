@@ -1,8 +1,8 @@
-# HomeOps Terraform Foundation (Issue #61)
+# HomeOps Terraform Foundation (Issues #61 and #62)
 
-This directory defines the first Terraform foundation for HomeOps AWS development infrastructure.
+This directory defines the Terraform foundation and initial private RDS development database for HomeOps AWS infrastructure.
 
-Issue #61 establishes infrastructure definitions only. It does not provision resources as part of this repository change, and you must not run `terraform apply` for this story.
+Issue #61 established infrastructure definitions only. Issue #62 extends that baseline by defining the first private RDS PostgreSQL development instance.
 
 ## Scope in Issue #61
 
@@ -27,6 +27,27 @@ Excluded:
 - remote state backend infrastructure
 - CI/CD deployment resources
 
+## Scope Added in Issue #62
+
+Included:
+- one private single-AZ RDS PostgreSQL instance in the existing private DB subnet group
+- db.t4g.micro instance class
+- PostgreSQL major version 16 track
+- gp3 storage with 20 GiB initial allocation and 40 GiB max autoscaling
+- storage encryption at rest using AWS-managed RDS encryption
+- RDS-managed master password in Secrets Manager (`manage_master_user_password = true`)
+- fixed non-overlapping backup and maintenance windows
+- 3-day automated backup retention
+- automatic minor version upgrades enabled
+- development lifecycle settings: deletion protection disabled and `skip_final_snapshot = true`
+- SSM DB host parameter wired to the RDS endpoint
+- outputs for endpoint, port, identifier, ARN, and RDS-managed secret ARN
+
+Excluded:
+- NAT Gateway, Internet Gateway, public subnet changes
+- App Runner, ECR, CloudFront, S3, ALB, ECS, EKS
+- Terraform apply as part of repository validation
+
 ## Local State Decision
 
 This first slice intentionally uses local Terraform state for learning and scope control.
@@ -36,9 +57,10 @@ Remote state and locking are intentionally deferred until Terraform usage become
 ## Security and Cost Guardrails
 
 - Do not commit secrets or real credentials.
-- The Terraform code creates only a Secrets Manager secret container, not a secret value.
+- The RDS password is generated and stored by AWS RDS in Secrets Manager.
+- Terraform does not generate or store a plaintext DB password value in source or tfvars.
 - Keep `.tfvars` local and uncommitted, except example files.
-- Avoid recurring-cost resources in this foundation slice. The largest expected recurring cost in future stories will be the RDS instance, which is intentionally deferred.
+- Keep infrastructure cost-conscious for dev. RDS is now the main recurring cost driver in this Terraform scope.
 
 ## Local Workflow (No Apply)
 
@@ -55,3 +77,5 @@ terraform plan -var-file=environments/dev.tfvars
 ```
 
 Before running `terraform plan`, verify the account and region from the AWS commands above to avoid planning against the wrong environment.
+
+Stop at `terraform plan` for the go/no-go checkpoint. Do not run `terraform apply` until explicitly approved.
