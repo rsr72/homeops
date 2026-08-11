@@ -71,6 +71,73 @@ Notes:
 - Logging remains stdout/stderr for container runtime compatibility.
 - Flyway remains the schema owner and Hibernate remains `ddl-auto: validate` through the `local-postgres` profile.
 
+## Backend container image publish to Amazon ECR (manual)
+
+Use this flow for the first ECR slice. GitHub Actions publishing is intentionally out of scope.
+
+Prerequisites:
+
+- Terraform ECR resources are already applied.
+- AWS CLI is configured for the target account and region.
+- Docker Buildx is available.
+
+From the repository root, capture ECR details from Terraform outputs:
+
+```bash
+cd infra/terraform
+AWS_REGION="$(terraform output -raw aws_region)"
+ECR_REPOSITORY_URL="$(terraform output -raw ecr_backend_repository_url)"
+ECR_REPOSITORY_NAME="$(terraform output -raw ecr_backend_repository_name)"
+```
+
+Authenticate Docker to Amazon ECR:
+
+```bash
+aws ecr get-login-password --region "$AWS_REGION" \
+	| docker login --username AWS --password-stdin "${ECR_REPOSITORY_URL%/*}"
+```
+
+Build the existing backend image for `linux/amd64` and tag it with an immutable Git SHA tag:
+
+```bash
+cd ..
+GIT_SHA="$(git rev-parse --short=12 HEAD)"
+IMAGE_TAG="sha-${GIT_SHA}"
+
+docker build \
+	--platform linux/amd64 \
+	-f backend/Dockerfile \
+	-t "$ECR_REPOSITORY_URL:$IMAGE_TAG" \
+	backend
+```
+
+Push the image:
+
+```bash
+docker push "$ECR_REPOSITORY_URL:$IMAGE_TAG"
+```
+
+Verify tag and digest in Amazon ECR:
+
+```bash
+aws ecr describe-images \
+	--region "$AWS_REGION" \
+	--repository-name "$ECR_REPOSITORY_NAME" \
+	--image-ids imageTag="$IMAGE_TAG" \
+	--query 'imageDetails[0].{tags:imageTags,digest:imageDigest,pushedAt:imagePushedAt,sizeBytes:imageSizeInBytes}'
+```
+
+Optional local digest check:
+
+```bash
+docker image inspect "$ECR_REPOSITORY_URL:$IMAGE_TAG" --format '{{index .RepoDigests 0}}'
+```
+
+Architecture note:
+
+- AWS App Runner runtime compatibility for this project assumes `linux/amd64` images.
+- On Apple Silicon hosts, always set `--platform linux/amd64` for publishable backend images.
+
 ## Local PostgreSQL development
 
 Only Docker Compose is supported for local PostgreSQL setup in this repository.

@@ -1,8 +1,8 @@
-# HomeOps Terraform Foundation (Issues #61 and #62)
+# HomeOps Terraform Foundation (Issues #61, #62, and #63)
 
 This directory defines the Terraform foundation and initial private RDS development database for HomeOps AWS infrastructure.
 
-Issue #61 established infrastructure definitions only. Issue #62 extends that baseline by defining the first private RDS PostgreSQL development instance.
+Issue #61 established infrastructure definitions only. Issue #62 extends that baseline by defining the first private RDS PostgreSQL development instance. Issue #63 adds the first backend container registry slice with Amazon ECR.
 
 ## Scope in Issue #61
 
@@ -48,6 +48,24 @@ Excluded:
 - App Runner, ECR, CloudFront, S3, ALB, ECS, EKS
 - Terraform apply as part of repository validation
 
+## Scope Added in Issue #63
+
+Included:
+- one private Amazon ECR repository for backend container images
+- repository naming via existing prefix convention (`${project}-${environment}-backend`)
+- immutable image tags (`image_tag_mutability = IMMUTABLE`)
+- ECR basic scan-on-push enabled
+- AWS-managed ECR encryption at rest (AES256)
+- lifecycle policy to expire untagged images older than 7 days
+- lifecycle policy to retain only the most recent 20 `sha-` tagged backend images
+- Terraform outputs for ECR repository name, URL, ARN, and registry ID
+
+Excluded:
+- App Runner service definition and runtime deployment wiring
+- GitHub Actions image publishing automation
+- ECS, EKS, ALB, CloudFront, and S3 delivery resources
+- application code changes
+
 ## Local State Decision
 
 This first slice intentionally uses local Terraform state for learning and scope control.
@@ -62,7 +80,7 @@ Remote state and locking are intentionally deferred until Terraform usage become
 - Keep `.tfvars` local and uncommitted, except example files.
 - Keep infrastructure cost-conscious for dev. RDS is now the main recurring cost driver in this Terraform scope.
 
-## Local Workflow (No Apply)
+## Local Workflow (Pre-Apply Gate)
 
 From the repository root:
 
@@ -79,3 +97,66 @@ terraform plan -var-file=environments/dev.tfvars
 Before running `terraform plan`, verify the account and region from the AWS commands above to avoid planning against the wrong environment.
 
 Stop at `terraform plan` for the go/no-go checkpoint. Do not run `terraform apply` until explicitly approved.
+
+## Controlled Apply and Manual ECR Publish Workflow
+
+This sequence is used only after explicit apply approval.
+
+From the repository root:
+
+```bash
+cd infra/terraform
+terraform apply -var-file=environments/dev.tfvars
+```
+
+Capture outputs needed for image publishing:
+
+```bash
+terraform output -raw aws_region
+terraform output -raw ecr_backend_repository_url
+terraform output -raw ecr_backend_repository_name
+```
+
+Authenticate Docker to ECR:
+
+```bash
+AWS_REGION="$(terraform output -raw aws_region)"
+ECR_REPOSITORY_URL="$(terraform output -raw ecr_backend_repository_url)"
+
+aws ecr get-login-password --region "$AWS_REGION" \
+	| docker login --username AWS --password-stdin "${ECR_REPOSITORY_URL%/*}"
+```
+
+Build the existing backend image for App Runner-compatible architecture (`linux/amd64`) and tag with immutable Git SHA:
+
+```bash
+GIT_SHA="$(git rev-parse --short=12 HEAD)"
+IMAGE_TAG="sha-${GIT_SHA}"
+
+docker build \
+	--platform linux/amd64 \
+	-f backend/Dockerfile \
+	-t "$ECR_REPOSITORY_URL:$IMAGE_TAG" \
+	backend
+```
+
+Push and verify image tag and digest in ECR:
+
+```bash
+docker push "$ECR_REPOSITORY_URL:$IMAGE_TAG"
+
+aws ecr describe-images \
+	--region "$AWS_REGION" \
+	--repository-name "$(terraform output -raw ecr_backend_repository_name)" \
+	--image-ids imageTag="$IMAGE_TAG" \
+	--query 'imageDetails[0].{tags:imageTags,digest:imageDigest,pushedAt:imagePushedAt,sizeBytes:imageSizeInBytes}'
+```
+
+Post-publish Terraform no-drift check:
+
+```bash
+cd infra/terraform
+terraform plan -detailed-exitcode -var-file=environments/dev.tfvars
+```
+
+Expected no-drift result is exit code `0`. Exit code `2` means drift or pending changes and should be reviewed before closing the issue.
