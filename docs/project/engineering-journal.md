@@ -16,6 +16,97 @@ Entries should focus on what was done, why it was done, what was learned, and wh
 
 ---
 
+## 2026-08-10 — Issue #63 Backend ECR Repository and Manual Image Publish Slice
+
+### Context
+
+HomeOps added the first container registry runtime surface so the existing Spring Boot backend image can move from local/CI build validation into a controlled AWS registry flow, while keeping deployment runtime work (App Runner) out of scope.
+
+### What Was Delivered
+
+- Added Terraform resources for one private Amazon ECR backend repository.
+- Preserved naming and tagging conventions from the existing Terraform foundation.
+- Enabled immutable image tags for traceable, non-overwritable image references.
+- Enabled ECR scan-on-push for baseline vulnerability visibility.
+- Kept encryption at rest with AWS-managed ECR encryption (`AES256`).
+- Added lifecycle policy rules to expire untagged images after 7 days and retain the most recent 20 `sha-` tagged backend images.
+- Added Terraform outputs needed by downstream runtime stories: ECR repository name, URL, ARN, and registry ID.
+- Added manual publish runbook steps: ECR auth via AWS CLI, `linux/amd64` backend image build, immutable Git SHA tag push, ECR digest verification, and post-publish Terraform no-drift check.
+
+### Actual Execution Results
+
+- Terraform apply completed successfully with `2 added, 0 changed, 0 destroyed`.
+- Provisioned ECR repository:
+	- name: `homeops-dev-backend`
+	- URI: `564001313291.dkr.ecr.us-east-2.amazonaws.com/homeops-dev-backend`
+	- tag mutability: `IMMUTABLE`
+	- scan on push: enabled
+	- encryption at rest: `AES256` (AWS-managed)
+- Lifecycle policy confirmed in AWS:
+	- untagged images expire after 7 days
+	- retain the most recent 20 images tagged with the `sha-` prefix
+- Published backend image tag: `sha-a9592b5a6702`
+- Published image digest: `sha256:9e6a102239c46bfe308769dde8bc7eb7621b5d6d1730aa02e0c7ba8b387b8237`
+- Image pushed timestamp: `2026-08-10T19:08:08.018000-05:00`
+- Image size reported by ECR: `144,936,220` bytes
+- Post-apply reconciliation check completed with detailed exit code `0` and no drift.
+
+### Key Concepts Captured During the Work
+
+- What ECR is:
+	- Amazon ECR is a private container image registry. It stores versioned image artifacts, metadata, and policies.
+- Docker image vs running container:
+	- An image is an immutable package template (filesystem + metadata).
+	- A container is a running process instance created from that image.
+- Why ECR stores but does not run:
+	- ECR is a registry service only. It has no runtime scheduler. Compute services such as App Runner or ECS pull and run images.
+- Why App Runner is next:
+	- This story created the trusted image source. The next runtime story can consume immutable SHA-tagged images from ECR without changing image build contracts.
+- Immutable Git SHA tagging:
+	- `sha-<12-char-git-sha>` gives traceability from deployed artifact back to exact source commit and avoids mutable release references.
+- Image digest vs image tag:
+	- Tag: human-friendly pointer (for example `sha-a9592b5a6702`).
+	- Digest: cryptographic content address (for example `sha256:...`) that uniquely identifies image content.
+- ECR authentication model:
+	- Docker authenticated with short-lived AWS CLI login tokens (`aws ecr get-login-password`), with no long-lived access keys introduced.
+- Why `linux/amd64` was explicit on Apple Silicon:
+	- The local machine is ARM-based. The target runtime contract for upcoming App Runner usage is `linux/amd64`, so build platform was pinned to guarantee compatibility.
+- Lifecycle policy and cost control:
+	- Expiring untagged images and retaining only recent SHA-tagged images prevents unbounded registry growth and aligns with MVP cost guardrails.
+- Vulnerability scanning behavior:
+	- Scan-on-push is enabled at the repository.
+	- The pushed artifact media type is `application/vnd.oci.image.index.v1+json`; immediate scan findings were not available in this run for that artifact type.
+	- The security baseline remains improved because scanning is configured; follow-up hardening can refine artifact format and scan-gating strategy if needed.
+- Terraform zero-drift verification:
+	- Running `terraform plan -var-file=environments/dev.tfvars.example -detailed-exitcode` after publish returned exit code `0`, confirming no infrastructure drift.
+
+### Scope Boundaries
+
+- No App Runner resources were added.
+- No GitHub Actions publishing automation was added.
+- No ECS/EKS/ALB/CloudFront/S3 delivery resources were added.
+- Existing backend Dockerfile and Java 21 runtime contract were preserved.
+
+### Security and Cost Notes
+
+- Repository remains private and does not introduce public registry access.
+- Immutable tags improve artifact integrity and release traceability.
+- Scan-on-push creates a minimal security feedback loop without changing release gates yet.
+- Lifecycle policy caps image retention to prevent avoidable storage drift and aligns with MVP cost guardrails.
+
+### Validation Boundary
+
+Issue #63 follows a controlled checkpoint: Terraform static validation and plan review first, then `terraform apply` only after explicit approval. Manual image publish and digest verification occur after apply. Final closure requires a Terraform no-drift plan check.
+
+### Skills Demonstrated
+
+- incremental Terraform extension for container registry infrastructure
+- secure artifact lifecycle configuration (immutability, scanning, retention)
+- architecture-aware container publishing (`linux/amd64` target for AWS runtime compatibility)
+- controlled apply and post-change drift verification discipline
+
+---
+
 ## 2026-08-09 — Issue #62 Private RDS PostgreSQL Development Database
 
 ### Context

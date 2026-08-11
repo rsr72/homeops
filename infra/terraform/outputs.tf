@@ -88,3 +88,23 @@ output "ssm_parameter_names" {
     db_credentials_secret_arn = aws_ssm_parameter.db_credentials_secret_arn.name
   }
 }
+
+output "ecr_backend_repository_name" {
+  description = "ECR repository name for the backend image"
+  value       = aws_ecr_repository.backend.name
+}
+
+output "ecr_backend_repository_url" {
+  description = "ECR repository URL for backend image push and pull"
+  value       = aws_ecr_repository.backend.repository_url
+}
+
+output "ecr_backend_repository_arn" {
+  description = "ECR repository ARN for future App Runner IAM policies"
+  value       = aws_ecr_repository.backend.arn
+}
+
+output "ecr_registry_id" {
+  description = "AWS account registry ID that owns the backend ECR repository"
+  value       = aws_ecr_repository.backend.registry_id
+}
