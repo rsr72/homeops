@@ -1,9 +1,15 @@
 # ADR-0001: Initial HomeOps AWS Development Architecture
 
-- Status: Accepted
+- Status: Superseded
 - Date: 2026-08-09
 
+Superseded by ADR-0002 for backend runtime architecture direction:
+
+- [0002-ecs-fargate-runtime-architecture.md](0002-ecs-fargate-runtime-architecture.md)
+
 ## Context
+
+This ADR remains as historical record of the initial 2026-08-09 architecture decision.
 
 HomeOps now has a validated local full-stack slice:
 

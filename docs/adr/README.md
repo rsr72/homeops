@@ -48,5 +48,8 @@ This process is intentionally lightweight so it supports clarity and historical 
 
 ## Current ADRs
 
-- ADR-0001: Initial HomeOps AWS Development Architecture
+
+- ADR-0002: ECS Fargate Runtime Architecture for Development
+	- [0002-ecs-fargate-runtime-architecture.md](0002-ecs-fargate-runtime-architecture.md)
+- ADR-0001: Initial HomeOps AWS Development Architecture (Superseded by ADR-0002 for runtime decision)
 	- [0001-initial-aws-development-architecture.md](0001-initial-aws-development-architecture.md)

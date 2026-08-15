@@ -4,6 +4,8 @@ This directory defines the Terraform foundation and initial private RDS developm
 
 Issue #61 established infrastructure definitions only. Issue #62 extends that baseline by defining the first private RDS PostgreSQL development instance. Issue #63 adds the first backend container registry slice with Amazon ECR.
 
+Note: references to App Runner in this document are historical to Issues #61-#63 and ADR-0001 context at the time. Current backend runtime direction is ADR-0002 (conventional ECS/Fargate).
+
 ## Scope in Issue #61
 
 Included:
@@ -127,7 +129,7 @@ aws ecr get-login-password --region "$AWS_REGION" \
 	| docker login --username AWS --password-stdin "${ECR_REPOSITORY_URL%/*}"
 ```
 
-Build the existing backend image for App Runner-compatible architecture (`linux/amd64`) and tag with immutable Git SHA:
+Build the existing backend image for AWS runtime-compatible architecture (`linux/amd64`) and tag with immutable Git SHA:
 
 ```bash
 GIT_SHA="$(git rev-parse --short=12 HEAD)"

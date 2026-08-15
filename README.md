@@ -169,15 +169,37 @@ Issue #59 selected the initial AWS development architecture and documented it in
 
 - [docs/adr/0001-initial-aws-development-architecture.md](docs/adr/0001-initial-aws-development-architecture.md)
 
-This is a documentation and decision milestone only. No AWS resources have been provisioned yet.
+The backend runtime direction has since been superseded and is now documented in:
+
+- [docs/adr/0002-ecs-fargate-runtime-architecture.md](docs/adr/0002-ecs-fargate-runtime-architecture.md)
+
+Issue #59 is a documentation and decision milestone.
 
 Issue #61 adds the first Terraform foundation under `infra/terraform/` for VPC, private subnet, security-group, DB subnet-group, and runtime configuration contracts.
 
 Issue #62 extends the Terraform scope by defining the first private RDS PostgreSQL development database configuration in that existing foundation.
 
+Issue #63 is complete and adds the first backend image registry slice:
+
+- Terraform created private ECR repository `homeops-dev-backend`.
+- ECR uses AWS-managed `AES256` encryption.
+- Image tags are immutable.
+- Scan-on-push is enabled.
+- Lifecycle policy expires untagged images after 7 days.
+- Lifecycle policy retains the most recent 20 `sha-` images.
+- Backend image was built locally from the existing Spring Boot Dockerfile for `linux/amd64`.
+- Backend image was pushed manually with AWS CLI and AWS IAM Identity Center (SSO) authentication.
+- Published tag: `sha-a9592b5a6702`.
+- Published digest: `sha256:9e6a102239c46bfe308769dde8bc7eb7621b5d6d1730aa02e0c7ba8b387b8237`.
+- ECR verification confirmed the image exists.
+- Scan lookup returned `ScanNotFound` at verification time; this should not be interpreted as a clean vulnerability scan result.
+- Final Terraform reconciliation returned no changes with detailed exit code `0`.
+- No App Runner, ECS, EKS, S3 frontend hosting, CloudFront, NAT Gateway, or deployment/CD infrastructure was introduced.
+- GitHub Actions image publishing remains deferred.
+
 - The Terraform workflow is local-state only for this initial slice.
 - Remote state and locking are intentionally deferred.
-- This repository change defines infrastructure and planning checkpoints only; no resources are provisioned until an explicit `terraform apply` approval.
+- Issue #64 is the next AWS infrastructure story: conventional ECS/Fargate backend runtime deployment that consumes the existing ECR backend image.
 
 ## Documentation
 
@@ -211,8 +233,9 @@ Next major slices:
 - authentication and authorization
 - documents and OCR
 - maintenance reminders
+- conventional ECS/Fargate backend deployment from ECR (Issue #64)
 - AWS deployment and production operations
-- backend containerization
+- frontend hosting path (React build -> S3 -> CloudFront with `/api/*` routing to ECS/Fargate backend ingress/ALB)
 
 ## Notes
 
