@@ -14,6 +14,82 @@ Target professional positioning:
 
 > Senior/lead engineer with deep enterprise infrastructure and automation experience who can design, build, secure, deploy, and operate modern cloud applications and effectively use AI agents throughout the engineering lifecycle.
 
+## CI/CD Promotion Model — Dev, Test, Stage, Prod
+
+HomeOps treats the following as a core modernization learning objective: design the delivery model used by enterprise systems without paying to operate four always-running AWS environments before the product needs them.
+
+HomeOps currently pays for one persistent AWS runtime environment: **DEV**. Initial **TEST**, **STAGE**, and **PROD** behavior is represented by CI/CD quality and promotion gates. This teaches artifact promotion, controls, and environment separation now while keeping early MVP infrastructure costs intentional and small.
+
+```text
+Build image
+	↓
+Unit tests
+	↓
+Deploy to DEV
+	↓
+Integration / E2E tests
+	↓
+STAGE GATE
+	- run stricter tests
+	- validate Terraform plan
+	- scan image and dependencies
+	- support manual approval
+	↓
+PROD GATE
+	- verify the exact same image SHA/artifact is being promoted
+	- require approval
+	- dry-run/validate production deployment steps
+```
+
+The promotion principles are:
+
+1. Build once and promote the same immutable artifact.
+2. DEV is currently the only persistent AWS runtime environment.
+3. TEST can initially be automated or ephemeral rather than permanently hosted.
+4. STAGE and PROD are initially pipeline promotion gates, not fake copies of DEV.
+5. Design the pipeline now so real Stage and Prod AWS environments can replace simulated gates later without redesigning the delivery model.
+6. Never rebuild a different Docker image for each environment.
+7. Environment-specific configuration and secrets belong outside the application artifact.
+8. The eventual real promotion path is DEV -> TEST -> STAGE -> PROD.
+9. Cost optimization is intentional: HomeOps learns enterprise CI/CD now without paying for several idle AWS environments.
+10. Before real users, payments, or production data, create true isolated Stage and Prod environments.
+
+The concise operating rule is: **Build once. Test it. Promote the same immutable artifact through increasingly strict gates.**
+
+## Terraform and Lifecycle Operations
+
+HomeOps treats Terraform desired state and imperative operational state as complementary, but keeps their ownership boundaries explicit. Terraform remains the source of truth for the ECS service and its `desired_count`: Sleep uses Terraform to move it from `1` to `0`, and Awake uses Terraform to move it from `0` to `1`. RDS start and stop are operational AWS lifecycle actions because they control the state of an existing Terraform-managed database instance rather than replace its infrastructure definition.
+
+The validated development state machine is:
+
+```text
+Awake -> Sleep -> Deep Sleep -> Awake
+
+Sleep:
+	ECS desired_count -> 0 through Terraform
+	-> verify no desired, running, or pending ECS tasks
+	-> retain RDS and ALB
+
+Deep Sleep:
+	ECS -> 0 -> verify stopped -> RDS stop
+
+Awake:
+	RDS start -> available -> ECS -> 1 -> target healthy -> API verification
+```
+
+Key lifecycle and IaC lessons:
+
+- A running ECS task does not prove application health; ALB target health plus API verification are stronger readiness signals.
+- Terraform must converge to `No changes` before guarded lifecycle automation can safely allowlist a single expected change.
+- AWS APIs can normalize submitted configuration and create perpetual Terraform drift. CloudFront's default `*.cloudfront.net` certificate fixes viewer TLS policy at `TLSv1`; an explicit `TLSv1.2_2021` policy requires a custom domain and ACM certificate in `us-east-1`.
+- Terraform data-resource dependencies can make an unchanged dependent resource appear `known after apply`; the S3 OAC bucket-policy plan was a consequence of the unresolved CloudFront change, not actual policy drift.
+- AWS CLI waiter availability must be verified rather than assumed. When a required waiter is absent, bounded polling with a last-observed-status error is an appropriate operational fallback.
+- State machines should expose transitional and reconciliation-required states rather than pretending operations are instantaneous.
+- RDS stop and start operations can take several minutes. The validated full Deep Sleep -> Awake cold recovery took approximately nine minutes.
+- Idempotency, Terraform plan allowlists, rollback/restoration of local desired input on failure, and reconciliation-required states are production-quality operational patterns.
+- Current Deep Sleep removes ECS compute and stops RDS but retains the ALB. Issue #70 tracks Terraform-safe runtime/ALB removal for deeper cost savings.
+- The same desired-state and operational-state discipline transfers directly to Azure through the `azurerm` provider.
+
 ## Completed Foundation To Date
 
 The following parts of the modernization story are already real and should be treated as completed foundation, even though the full project still has major open areas.
