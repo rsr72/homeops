@@ -50,5 +50,7 @@ infra/terraform/override.tf.json
 infra/terraform/*_override.tf
 infra/terraform/*_override.tf.json
 infra/terraform/*.tfvars
+infra/terraform/environments/*.tfvars
 !infra/terraform/*.tfvars.example
 !infra/terraform/environments/*.tfvars.example
+*.tfplan
