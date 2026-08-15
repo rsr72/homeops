@@ -71,19 +71,24 @@ The MVP depends on a small set of external capabilities that may be introduced o
 
 ## AWS Evolution Path
 
-The long-term AWS path is now anchored by an accepted initial development architecture decision in ADR-0001:
+The current backend runtime direction is anchored in ADR-0002:
 
-- [docs/adr/0001-initial-aws-development-architecture.md](../adr/0001-initial-aws-development-architecture.md)
+- [docs/adr/0002-ecs-fargate-runtime-architecture.md](../adr/0002-ecs-fargate-runtime-architecture.md)
 
-The selected model for development is:
+Historical context:
 
-- private S3 origin behind CloudFront for frontend delivery
-- CloudFront path routing with `/*` to S3 and `/api/*` to the backend origin
-- App Runner backend runtime from ECR image
+- ADR-0001 recorded the original App Runner-first decision and is retained as history.
+
+The selected development runtime model is now:
+
+- private S3 origin behind CloudFront for frontend delivery (frontend story remains later scope)
+- CloudFront path routing with `/*` to S3 and `/api/*` to the backend origin (later scope)
+- conventional ECS/Fargate backend runtime from ECR image
+- public ALB ingress to ECS tasks for development
+- ECS task in public subnet with public IP for development-only cost optimization
 - private single-AZ RDS PostgreSQL
-- App Runner VPC connector for private database access
-- Secrets Manager and Parameter Store for runtime secrets/configuration
-- CloudWatch for logs and basic alarms
+- SG-restricted traffic: ALB -> ECS task -> RDS
+- Secrets Manager for DB credentials and CloudWatch for logs/monitoring
 
 No AWS resources have been provisioned yet. Provisioning remains deferred to later Terraform implementation stories.
 
@@ -101,7 +106,7 @@ The broader AWS path remains:
 - centralized logs, metrics, and alerts
 - scheduled reminder execution
 
-This does not require choosing App Runner versus ECS/Fargate at this stage.
+Runtime selection for backend now uses ECS/Fargate via ADR-0002. Additional production hardening decisions are intentionally deferred.
 
 ## Data Model Scope
 

@@ -16,6 +16,61 @@ Entries should focus on what was done, why it was done, what was learned, and wh
 
 ---
 
+## 2026-08-15 — Issue #64 Runtime Architecture Decision Update (Documentation Only)
+
+### Context
+
+HomeOps previously selected App Runner in ADR-0001 for the initial backend runtime direction. After that decision, App Runner availability and service-direction constraints changed for this AWS account.
+
+Issue #64 therefore performed a runtime re-evaluation and cost-optimization review before implementation.
+
+### What Was Decided
+
+HomeOps accepted ADR-0002 and selected conventional ECS on Fargate as the backend runtime architecture.
+
+Why conventional ECS/Fargate was selected:
+
+- stronger transferable AWS modernization learning value,
+- explicit experience with ECS clusters, services, task definitions, IAM roles, ALB integration, and deployment lifecycle,
+- clearer portfolio signal than higher-abstraction alternatives.
+
+Development network topology selected for first runtime implementation:
+
+- public ALB for HTTPS entry,
+- Fargate tasks in public subnets with `assign_public_ip = true`,
+- no direct Internet inbound rule to task security group,
+- inbound application traffic restricted to ALB security group source,
+- private RDS retained, with PostgreSQL 5432 SG-to-SG only from ECS task SG,
+- no NAT Gateway initially,
+- no initial interface VPC endpoint fleet.
+
+Why this development topology was selected:
+
+- reduces fixed recurring cost,
+- reduces Terraform complexity in first ECS runtime slice,
+- preserves a clean future hardening path to private-subnet tasks with controlled egress.
+
+### Scope Boundary
+
+This entry documents an architecture decision update only.
+
+- No Terraform runtime resources were applied.
+- No ECS service, ALB, public subnets, or Internet Gateway were created in this step.
+- No backend code, Dockerfile, or CI deployment automation changes were made in this step.
+
+### Security Caveat
+
+Any Internet-accessible backend introduced under this development topology remains development-only until production authentication and authorization controls are implemented.
+
+### Skills Demonstrated
+
+- architecture supersession governance through ADRs
+- cloud cost and security tradeoff analysis
+- ECS platform decision framing for real-world and learning objectives
+- scope-controlled documentation updates before infrastructure implementation
+
+---
+
 ## 2026-08-10 — Issue #63 Backend ECR Repository and Manual Image Publish Slice
 
 ### Context
@@ -49,7 +104,145 @@ HomeOps added the first container registry runtime surface so the existing Sprin
 - Published image digest: `sha256:9e6a102239c46bfe308769dde8bc7eb7621b5d6d1730aa02e0c7ba8b387b8237`
 - Image pushed timestamp: `2026-08-10T19:08:08.018000-05:00`
 - Image size reported by ECR: `144,936,220` bytes
+- ECR verification confirmed the pushed image exists.
+- Image scan verification lookup returned `ScanNotFound` for this pushed artifact at verification time.
+- This should not be interpreted as a clean vulnerability scan result.
 - Post-apply reconciliation check completed with detailed exit code `0` and no drift.
+- No App Runner, ECS, EKS, S3 frontend hosting, CloudFront, NAT Gateway, or deployment/CD infrastructure was introduced in this story.
+- GitHub Actions image publishing remains deferred.
+
+### ECR and Artifact Flow
+
+Amazon Elastic Container Registry (ECR) is AWS's container-image registry. It stores Docker/OCI images but does not execute them.
+
+```text
+Spring Boot source
+	↓
+Maven/JAR
+	↓
+Docker build on Mac
+	↓
+linux/amd64 Docker image
+	↓
+ECR
+	↓
+future App Runner
+```
+
+Current state clarification:
+
+- The backend image now stored in ECR was built locally on an Apple Silicon Mac.
+- The image is not currently running in AWS.
+- Building with `--platform linux/amd64` intentionally produced an image for the planned AWS runtime instead of defaulting to local ARM architecture.
+
+### Runtime Building Blocks
+
+- Dockerfile: recipe used to construct the backend image.
+- Docker image: packaged application/runtime artifact.
+- ECR: repository that stores the image artifact.
+- Container: running instance of an image.
+- App Runner: AWS service that will run the ECR image in the next story.
+
+### Immutable Git SHA Tagging
+
+```text
+Git commit
+    ↓
+sha-a9592b5a6702
+    ↓
+exact Docker image
+    ↓
+future deployment
+```
+
+- A tag is a human-readable reference to an image.
+- A SHA256 image digest identifies the actual image content and provides stronger artifact identity.
+
+### ECR Authentication Path
+
+```text
+User
+  ↓
+AWS IAM Identity Center / SSO
+  ↓
+temporary AWS CLI credentials
+  ↓
+ECR authorization token
+  ↓
+Docker push
+```
+
+No long-lived AWS access keys were created.
+
+### Lifecycle and Cost Control
+
+- Untagged images expire after 7 days.
+- Only the latest 20 `sha-` images are retained.
+- This limits unnecessary registry-storage accumulation.
+
+### Scanning Note
+
+- Scan-on-push is enabled on the repository.
+- Verification-time scan lookup returned `ScanNotFound` for the pushed artifact.
+- The result means no findings were available at verification time and should not be reported as a clean scan.
+
+### Terraform Lifecycle Used in This Story
+
+```text
+Terraform configuration
+	↓
+plan
+	↓
+apply
+	↓
+AWS ECR created
+	↓
+verify AWS
+	↓
+terraform plan -detailed-exitcode
+	↓
+exit code 0 / zero drift
+```
+
+### Current HomeOps AWS Checkpoint
+
+```text
+BUILT/PROVISIONED
+
+Terraform
+   ├── VPC
+   ├── private subnets
+   ├── security groups
+   ├── RDS PostgreSQL
+   ├── Secrets Manager
+   ├── SSM Parameter Store
+   └── ECR
+	    └── Spring Boot Docker image
+
+NEXT — Issue #64
+
+ECR
+ ↓
+App Runner
+ ↓
+VPC Connector
+ ↓
+RDS PostgreSQL
+
+LATER
+
+React build
+ ↓
+S3
+ ↓
+CloudFront
+ ↓
+/api/*
+ ↓
+App Runner
+```
+
+Issue #64 is the milestone where the backend image already stored in ECR becomes a running Spring Boot container in AWS.
 
 ### Key Concepts Captured During the Work
 
