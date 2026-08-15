@@ -152,6 +152,89 @@ The work also reinforced why HomeOps keeps immutable artifacts, explicit runtime
 
 ADR-0002 superseded the runtime direction from ADR-0001, but the earlier App Runner-era entries remain part of the project history. This retrospective records the completed ECS/Fargate implementation without rewriting that history.
 
+## 2026-08-15 — FinOps / Development Environment Lifecycle for ECS/Fargate
+
+### Context
+
+Issue #66 was successfully completed and merged after end-to-end AWS validation. That made the development environment a real operational system rather than a one-way deployment target, so the environment needed explicit cost-control states instead of remaining continuously running.
+
+### Operating States
+
+HomeOps now treats the development environment as having three operational states:
+
+| State | Definition | Approximate cost | When to use |
+| --- | --- | --- | --- |
+| Running | ECS desired count 1, RDS running, ALB provisioned | about $50-60/month | Active development, testing, or validation |
+| Sleeping | ECS desired count 0, RDS stopped, ALB retained | about $22-30/month | Hours, overnight, or a single day of inactivity |
+| Deep Sleep | RDS stopped and ECS/ALB runtime layer destroyed through Terraform while retaining inexpensive foundation resources | about $3-5/month | Multi-day inactivity or planned idle periods |
+
+### FinOps Lesson
+
+Cloud cost management is part of engineering. A development environment should have an explicit lifecycle so the team can reduce waste without losing the ability to restore a known-good runtime path.
+
+Terraform remains the durable desired-state definition, even when temporary operational sleep intentionally differs from that state. During sleep, the live environment may drift from Terraform by design, but the wake procedure must intentionally restore the runtime and then reconcile Terraform and live state.
+
+### Tested ECS Sleep Procedure
+
+The ECS sleep procedure was tested against the live AWS environment using authoritative resource discovery before mutation:
+
+1. Discover the live ECS cluster with `aws ecs list-clusters`.
+2. Discover the live ECS service with `aws ecs list-services`.
+3. Set ECS desired count to 0.
+4. Verify `Desired=0`, `Running=0`, and `Pending=0`.
+
+The discovered development runtime identifiers used for the sleep procedure were:
+
+- cluster `homeops-dev-backend-cluster`
+- service `homeops-dev-backend-service`
+
+An initial `ClusterNotFoundException` occurred because an assumed cluster name was used. The lesson is to query AWS and Terraform for authoritative physical resource identifiers before making operational changes instead of assuming Terraform logical names always match deployed AWS names.
+
+### RDS Stop and Verification
+
+The development PostgreSQL instance `homeops-dev-postgres` was stopped and verified to reach the `stopped` state.
+
+Sleeping RDS still incurs storage and backup-related charges, and AWS may automatically restart a stopped RDS instance after the permitted stop period. The stopped database therefore reduces cost but does not eliminate it.
+
+### Cost Behavior While Sleeping
+
+- The ALB continues to incur charges while retained.
+- ECS desired count 0 eliminates the running Fargate task compute and task public IPv4 usage while asleep.
+- Manually changing ECS desired count from Terraform's declared 1 to AWS runtime 0 creates intentional temporary Terraform drift.
+
+### Wake and Reconciliation Procedure
+
+The wake procedure must deliberately restore RDS and ECS before normal development or Terraform work resumes.
+
+Concise wake runbook:
+
+1. Restore the RDS instance to `available`.
+2. Restore the ECS service desired count to 1.
+3. Verify the task, container, and ALB target become healthy again.
+4. Reconcile Terraform and live state so the durable desired-state definition again matches the active runtime.
+
+Concise sleep runbook:
+
+1. Confirm the environment is not needed for the current work window.
+2. Set ECS desired count to 0 and verify `Desired=0`, `Running=0`, `Pending=0`.
+3. Stop the RDS instance and verify `stopped`.
+4. Retain the ALB if the environment should wake quickly, or move to Deep Sleep for longer idle periods.
+5. Record the active state so the next wake step is deliberate.
+
+### Engineering Lesson
+
+The operational lifecycle is part of the system design, not an afterthought. Terraform defines the durable desired state, but the team can temporarily sleep the environment to control cost as long as the wake procedure restores the runtime deliberately and reconciles the state afterward.
+
+### Skills Demonstrated
+
+- FinOps-aware development operations
+- ECS service lifecycle management
+- RDS stop and restart awareness
+- authoritative AWS resource discovery
+- temporary Terraform drift management
+- durable desired-state reasoning
+- reusable operational runbook design
+
 ## 2026-08-15 — Issue #64 Runtime Architecture Decision Update (Documentation Only)
 
 ### Context

@@ -81,8 +81,8 @@ Historical context:
 
 The selected development runtime model is now:
 
-- private S3 origin behind CloudFront for frontend delivery (frontend story remains later scope)
-- CloudFront path routing with `/*` to S3 and `/api/*` to the backend origin (later scope)
+- private S3 origin behind CloudFront for frontend delivery using Origin Access Control (OAC)
+- CloudFront path routing with `/*` to S3 and `/api/*` to the backend ALB to preserve same-origin browser behavior
 - conventional ECS/Fargate backend runtime from ECR image
 - public ALB ingress to ECS tasks for development
 - ECS task in public subnet with public IP for development-only cost optimization
@@ -90,7 +90,11 @@ The selected development runtime model is now:
 - SG-restricted traffic: ALB -> ECS task -> RDS
 - Secrets Manager for DB credentials and CloudWatch for logs/monitoring
 
-No AWS resources have been provisioned yet. Provisioning remains deferred to later Terraform implementation stories.
+CloudFront provides the public HTTPS endpoint using its default domain. The current ALB has an HTTP listener only, so CloudFront-to-ALB traffic for `/api/*` is temporarily HTTP in this development topology. A future ALB HTTPS, ACM, Route 53, and custom-domain decision is required before treating that origin connection as production-ready.
+
+The React frontend keeps its relative `/api` API contract. Because CloudFront routes those requests on the same public origin, no browser CORS policy is required for the current API workflow. A CloudFront Function rewrites only extensionless frontend paths on the default S3 behavior to `index.html`, leaving API errors unmodified.
+
+Terraform now defines the development VPC, RDS, ECR, ECS/Fargate, ALB, private frontend S3 origin, and CloudFront distribution. Frontend build artifacts are deployed manually to the private bucket; automated deployment remains deferred.
 
 Issue #61 defines the first Terraform foundation contracts under `infra/terraform/` while intentionally avoiding provisioning and runtime deployment.
 

@@ -38,9 +38,11 @@ Approved development runtime topology:
 
 ```text
 Internet
-   ↓ HTTPS
+        ↓ HTTPS
+CloudFront default domain
+        ↓ /api/* over HTTP (temporary development limitation)
 Public Application Load Balancer
-   ↓ port 8080, SG-to-SG only
+        ↓ port 8080, SG-to-SG only
 ECS/Fargate Spring Boot task
    - public subnet
    - public IP
@@ -61,6 +63,9 @@ Component responsibilities:
 - Secrets Manager stores database credentials (RDS-managed secret).
 - CloudWatch stores runtime logs and supports operational monitoring.
 - Private RDS PostgreSQL remains non-public and reachable only from allowed security groups.
+- CloudFront serves the React frontend from a private S3 origin through OAC and routes relative `/api/*` requests to the ALB.
+
+CloudFront enforces HTTPS for viewer traffic using its default certificate. The current ALB listener is HTTP-only, so CloudFront uses HTTP for the ALB origin connection in this development slice. That is an explicit temporary limitation, not a production transport model; ALB HTTPS, ACM, Route 53, and a custom domain remain deferred.
 
 ## Networking
 

@@ -1,6 +1,6 @@
-# HomeOps Terraform Foundation (Issues #61, #62, #63, and #66)
+# HomeOps Terraform Foundation (Issues #61, #62, #63, #66, and frontend hosting)
 
-This directory defines the Terraform foundation, private RDS development database, backend ECR registry, and first ECS/Fargate development runtime for HomeOps AWS infrastructure.
+This directory defines the Terraform foundation, private RDS development database, backend ECR registry, ECS/Fargate development runtime, and CloudFront-delivered frontend for HomeOps AWS infrastructure.
 
 Issue #61 established infrastructure definitions only. Issue #62 extends that baseline by defining the first private RDS PostgreSQL development instance. Issue #63 adds the first backend container registry slice with Amazon ECR. Issue #66 adds the first conventional ECS/Fargate runtime and public ingress path for development.
 
@@ -84,6 +84,40 @@ Excluded:
 - NAT gateways and VPC interface endpoints
 - Terraform apply in CI or repository validation
 
+## Scope Added for Frontend Hosting
+
+Included:
+- one private, versioned, AES256-encrypted S3 bucket for immutable frontend release artifacts
+- S3 bucket ownership enforcement and all four public-access-block controls
+- CloudFront Origin Access Control (OAC) with SigV4 signing for the S3 origin
+- an S3 bucket policy allowing reads only from the intended CloudFront distribution
+- CloudFront default-domain HTTPS delivery with `PriceClass_100` for development cost control
+- CloudFront default behavior for the S3 origin and a viewer-request function for React SPA routes
+- CloudFront `/api/*` behavior forwarding to the existing backend ALB with caching disabled
+- Terraform outputs required for manual frontend publishing and cache invalidation
+
+Excluded:
+- public S3 website hosting or public bucket access
+- Cognito/authentication, Route 53, ACM, custom domains, WAF, and GitHub Actions deployment
+- ALB HTTPS configuration; CloudFront-to-ALB origin traffic remains HTTP for this temporary development slice
+- remote Terraform state and frontend build artifacts managed by Terraform
+
+## Frontend Architecture and Security
+
+Browser requests use the CloudFront default HTTPS domain:
+
+```text
+Browser
+	-> HTTPS -> CloudFront
+			-> /*     -> private S3 frontend origin through OAC
+			-> /api/* -> existing public ALB over HTTP (temporary development limitation)
+									-> ECS/Fargate backend -> private RDS
+```
+
+The frontend keeps its existing relative `/api` requests. CloudFront path routing makes API requests same-origin with the SPA, so no frontend API base URL or backend CORS policy is needed for this slice. The SPA-routing CloudFront Function is associated only with the default S3 behavior; `/api/*` is not rewritten and backend error responses remain intact.
+
+S3 is never configured as a public website origin. All public access is blocked, object ownership is bucket-owner-enforced, default encryption is enabled, and the bucket policy allows `s3:GetObject` only to the CloudFront service principal for this distribution and account. The policy also denies insecure transport.
+
 ## Local State Decision
 
 This first slice intentionally uses local Terraform state for learning and scope control.
@@ -97,6 +131,7 @@ Remote state and locking are intentionally deferred until Terraform usage become
 - Terraform does not generate or store a plaintext DB password value in source or tfvars.
 - Keep `.tfvars` local and uncommitted, except example files.
 - Keep infrastructure cost-conscious for dev. RDS is now the main recurring cost driver in this Terraform scope.
+- Use the CloudFront `PriceClass_100` default, cache hashed frontend assets, and invalidate only after frontend releases.
 
 ## Local Workflow (Pre-Apply Gate)
 
@@ -178,3 +213,76 @@ terraform plan -detailed-exitcode -var-file=environments/dev.tfvars
 ```
 
 Expected no-drift result is exit code `0`. Exit code `2` means drift or pending changes and should be reviewed before closing the issue.
+
+## Controlled Frontend Publish Workflow
+
+This sequence is used only after Terraform apply approval and after the CloudFront distribution has deployed. Terraform owns the bucket and distribution; it does not manage generated `frontend/dist` artifacts.
+
+Build and verify the frontend:
+
+```bash
+cd frontend
+npm ci
+npm test
+npm run build
+```
+
+Upload immutable hashed assets with long-lived caching, then upload the SPA entry point without caching:
+
+```bash
+cd infra/terraform
+AWS_REGION="$(terraform output -raw aws_region)"
+FRONTEND_BUCKET="$(terraform output -raw frontend_s3_bucket_name)"
+
+aws s3 sync ../../frontend/dist "s3://${FRONTEND_BUCKET}" \
+	--region "$AWS_REGION" \
+	--delete \
+	--exclude "index.html" \
+	--cache-control "public,max-age=31536000,immutable"
+
+aws s3 cp ../../frontend/dist/index.html "s3://${FRONTEND_BUCKET}/index.html" \
+	--region "$AWS_REGION" \
+	--cache-control "no-cache, no-store, must-revalidate" \
+	--content-type "text/html"
+```
+
+Invalidate the distribution after upload and wait for completion before testing the new release:
+
+```bash
+FRONTEND_DISTRIBUTION_ID="$(terraform output -raw frontend_cloudfront_distribution_id)"
+INVALIDATION_ID="$(aws cloudfront create-invalidation \
+	--distribution-id "$FRONTEND_DISTRIBUTION_ID" \
+	--paths '/*' \
+	--query 'Invalidation.Id' \
+	--output text)"
+
+aws cloudfront wait invalidation-completed \
+	--distribution-id "$FRONTEND_DISTRIBUTION_ID" \
+	--id "$INVALIDATION_ID"
+```
+
+## Frontend Post-Deployment Validation
+
+Verify the static artifact inventory and that all S3 public-access blocks remain enabled:
+
+```bash
+aws s3 ls "s3://$(terraform output -raw frontend_s3_bucket_name)" --recursive
+aws s3api get-public-access-block \
+	--bucket "$(terraform output -raw frontend_s3_bucket_name)"
+```
+
+Verify anonymous S3 object access is denied, then verify the public CloudFront endpoint and SPA deep links return the application over HTTPS:
+
+```bash
+FRONTEND_URL="$(terraform output -raw frontend_cloudfront_url)"
+curl --fail --silent --show-error --head "$FRONTEND_URL"
+curl --fail --silent --show-error --head "$FRONTEND_URL/vehicles"
+```
+
+Use the deployed CloudFront URL to run the existing household, vehicle, and maintenance workflow. Confirm browser requests remain on the CloudFront origin at `/api/*`, succeed without CORS errors, and cleanup uses the same backend API. Finally, run the no-drift check:
+
+```bash
+terraform plan -detailed-exitcode -var-file=environments/dev.tfvars
+```
+
+For Deep Sleep or permanent cleanup, destroy the distribution and empty versioned frontend bucket through the approved Terraform teardown workflow. CloudFront request/data-transfer and S3 storage/request usage are incremental costs; at low development traffic they should be small compared with the existing ALB, RDS, and Fargate baseline.

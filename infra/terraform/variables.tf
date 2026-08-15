@@ -207,3 +207,14 @@ variable "cloudwatch_log_retention_days" {
   type        = number
   default     = 14
 }
+
+variable "cloudfront_price_class" {
+  description = "CloudFront price class for the development frontend distribution"
+  type        = string
+  default     = "PriceClass_100"
+
+  validation {
+    condition     = contains(["PriceClass_100", "PriceClass_200", "PriceClass_All"], var.cloudfront_price_class)
+    error_message = "CloudFront price class must be PriceClass_100, PriceClass_200, or PriceClass_All."
+  }
+}

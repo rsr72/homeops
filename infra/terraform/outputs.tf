@@ -173,3 +173,28 @@ output "backend_task_role_arn" {
   description = "ECS task IAM role ARN"
   value       = aws_iam_role.ecs_task.arn
 }
+
+output "frontend_s3_bucket_name" {
+  description = "Private S3 bucket name used as the frontend CloudFront origin"
+  value       = aws_s3_bucket.frontend.bucket
+}
+
+output "frontend_s3_bucket_arn" {
+  description = "Private S3 bucket ARN used as the frontend CloudFront origin"
+  value       = aws_s3_bucket.frontend.arn
+}
+
+output "frontend_cloudfront_distribution_id" {
+  description = "CloudFront distribution ID for frontend cache invalidations"
+  value       = aws_cloudfront_distribution.frontend.id
+}
+
+output "frontend_cloudfront_domain_name" {
+  description = "CloudFront default domain name for the frontend"
+  value       = aws_cloudfront_distribution.frontend.domain_name
+}
+
+output "frontend_cloudfront_url" {
+  description = "HTTPS URL for the public frontend CloudFront distribution"
+  value       = "https://${aws_cloudfront_distribution.frontend.domain_name}"
+}
