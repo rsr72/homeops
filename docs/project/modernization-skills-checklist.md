@@ -71,7 +71,7 @@ Sleep:
 	-> retain RDS and ALB
 
 Deep Sleep:
-	ECS -> 0 -> verify stopped -> RDS stop
+	ECS -> 0 -> verify stopped -> Terraform runtime absent -> verify absence -> RDS stop
 
 Awake:
 	RDS start -> available -> ECS -> 1 -> target healthy -> API verification
@@ -87,7 +87,9 @@ Key lifecycle and IaC lessons:
 - State machines should expose transitional and reconciliation-required states rather than pretending operations are instantaneous.
 - RDS stop and start operations can take several minutes. The validated full Deep Sleep -> Awake cold recovery took approximately nine minutes.
 - Idempotency, Terraform plan allowlists, rollback/restoration of local desired input on failure, and reconciliation-required states are production-quality operational patterns.
-- Current Deep Sleep removes ECS compute and stops RDS but retains the ALB. Issue #70 tracks Terraform-safe runtime/ALB removal for deeper cost savings.
+- Declarative runtime lifecycle separates durable resources from ephemeral runtime resources. Terraform conditional resources, stable state addresses, dependency ordering, destroy/recreate semantics, and reconciliation after partial failure are required to make that boundary safe.
+- ALBs cannot be stopped. Deep Sleep removes the ALB runtime layer declaratively with Terraform rather than deleting Terraform-managed resources imperatively; the same pattern transfers conceptually to Azure through the `azurerm` provider.
+- Current Deep Sleep removes ECS and ALB runtime costs and stops RDS instance compute while retaining RDS storage/backups, ECR, S3/CloudFront, secrets/configuration, networking, IAM, and logs.
 - The same desired-state and operational-state discipline transfers directly to Azure through the `azurerm` provider.
 
 ## Completed Foundation To Date

@@ -28,7 +28,7 @@ resource "aws_cloudfront_function" "frontend_spa_routing" {
       var request = event.request;
       var uri = request.uri;
 
-      if (!uri.includes('.')) {
+      if (!uri.startsWith('/api/') && !uri.includes('.')) {
         request.uri = '/index.html';
       }
 
@@ -51,15 +51,19 @@ resource "aws_cloudfront_distribution" "frontend" {
     origin_access_control_id = aws_cloudfront_origin_access_control.frontend.id
   }
 
-  origin {
-    domain_name = aws_lb.backend.dns_name
-    origin_id   = "backend-alb"
+  dynamic "origin" {
+    for_each = var.runtime_present ? [1] : []
 
-    custom_origin_config {
-      http_port              = 80
-      https_port             = 443
-      origin_protocol_policy = "http-only"
-      origin_ssl_protocols   = ["TLSv1.2"]
+    content {
+      domain_name = aws_lb.backend[0].dns_name
+      origin_id   = "backend-alb"
+
+      custom_origin_config {
+        http_port              = 80
+        https_port             = 443
+        origin_protocol_policy = "http-only"
+        origin_ssl_protocols   = ["TLSv1.2"]
+      }
     }
   }
 
@@ -77,15 +81,19 @@ resource "aws_cloudfront_distribution" "frontend" {
     }
   }
 
-  ordered_cache_behavior {
-    path_pattern             = "/api/*"
-    allowed_methods          = ["GET", "HEAD", "OPTIONS", "PUT", "POST", "PATCH", "DELETE"]
-    cached_methods           = ["GET", "HEAD", "OPTIONS"]
-    cache_policy_id          = data.aws_cloudfront_cache_policy.caching_disabled.id
-    origin_request_policy_id = data.aws_cloudfront_origin_request_policy.all_viewer_except_host_header.id
-    compress                 = true
-    target_origin_id         = "backend-alb"
-    viewer_protocol_policy   = "redirect-to-https"
+  dynamic "ordered_cache_behavior" {
+    for_each = var.runtime_present ? [1] : []
+
+    content {
+      path_pattern             = "/api/*"
+      allowed_methods          = ["GET", "HEAD", "OPTIONS", "PUT", "POST", "PATCH", "DELETE"]
+      cached_methods           = ["GET", "HEAD", "OPTIONS"]
+      cache_policy_id          = data.aws_cloudfront_cache_policy.caching_disabled.id
+      origin_request_policy_id = data.aws_cloudfront_origin_request_policy.all_viewer_except_host_header.id
+      compress                 = true
+      target_origin_id         = "backend-alb"
+      viewer_protocol_policy   = "redirect-to-https"
+    }
   }
 
   restrictions {
