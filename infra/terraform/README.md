@@ -1,8 +1,8 @@
-# HomeOps Terraform Foundation (Issues #61, #62, and #63)
+# HomeOps Terraform Foundation (Issues #61, #62, #63, and #66)
 
-This directory defines the Terraform foundation and initial private RDS development database for HomeOps AWS infrastructure.
+This directory defines the Terraform foundation, private RDS development database, backend ECR registry, and first ECS/Fargate development runtime for HomeOps AWS infrastructure.
 
-Issue #61 established infrastructure definitions only. Issue #62 extends that baseline by defining the first private RDS PostgreSQL development instance. Issue #63 adds the first backend container registry slice with Amazon ECR.
+Issue #61 established infrastructure definitions only. Issue #62 extends that baseline by defining the first private RDS PostgreSQL development instance. Issue #63 adds the first backend container registry slice with Amazon ECR. Issue #66 adds the first conventional ECS/Fargate runtime and public ingress path for development.
 
 Note: references to App Runner in this document are historical to Issues #61-#63 and ADR-0001 context at the time. Current backend runtime direction is ADR-0002 (conventional ECS/Fargate).
 
@@ -67,6 +67,22 @@ Excluded:
 - GitHub Actions image publishing automation
 - ECS, EKS, ALB, CloudFront, and S3 delivery resources
 - application code changes
+
+## Scope Added in Issue #66
+
+Included:
+- public subnets across two AZs, internet gateway, public route table, and associations
+- public ALB with HTTP listener on port 80 and `/actuator/health` target group checks
+- ECS cluster, Fargate task definition, and ECS service with `assign_public_ip = true`
+- CloudWatch log group and awslogs wiring for backend container logs
+- split IAM roles for execution vs application task responsibilities
+- backend task runtime env + secret injection for DB connectivity with `SPRING_PROFILES_ACTIVE=aws-dev`
+- security group flow constrained to ALB -> backend task (8080) and backend task -> RDS (5432)
+
+Excluded:
+- HTTPS/ACM/Route53
+- NAT gateways and VPC interface endpoints
+- Terraform apply in CI or repository validation
 
 ## Local State Decision
 

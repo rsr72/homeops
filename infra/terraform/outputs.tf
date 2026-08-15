@@ -18,6 +18,11 @@ output "private_subnet_ids" {
   value       = [for subnet in aws_subnet.private : subnet.id]
 }
 
+output "public_subnet_ids" {
+  description = "Public subnet IDs for ALB and ECS task networking"
+  value       = [for subnet in aws_subnet.public : subnet.id]
+}
+
 output "private_subnet_azs" {
   description = "Availability zones used by the private subnets"
   value       = [for subnet in aws_subnet.private : subnet.availability_zone]
@@ -28,13 +33,28 @@ output "private_route_table_id" {
   value       = aws_route_table.private.id
 }
 
+output "public_route_table_id" {
+  description = "Public route table ID associated with all public subnets"
+  value       = aws_route_table.public.id
+}
+
+output "internet_gateway_id" {
+  description = "Internet gateway ID attached to the development VPC"
+  value       = aws_internet_gateway.dev.id
+}
+
 output "apprunner_vpc_connector_security_group_id" {
-  description = "Security group ID for future App Runner VPC connector"
+  description = "Legacy-named backend task security group ID"
   value       = aws_security_group.apprunner_vpc_connector.id
 }
 
+output "alb_security_group_id" {
+  description = "Security group ID for the backend ALB"
+  value       = aws_security_group.alb.id
+}
+
 output "rds_security_group_id" {
-  description = "Security group ID for future RDS instance"
+  description = "Security group ID for the RDS instance"
   value       = aws_security_group.rds.id
 }
 
@@ -107,4 +127,49 @@ output "ecr_backend_repository_arn" {
 output "ecr_registry_id" {
   description = "AWS account registry ID that owns the backend ECR repository"
   value       = aws_ecr_repository.backend.registry_id
+}
+
+output "backend_alb_arn" {
+  description = "Backend application load balancer ARN"
+  value       = aws_lb.backend.arn
+}
+
+output "backend_alb_dns_name" {
+  description = "Backend application load balancer DNS name"
+  value       = aws_lb.backend.dns_name
+}
+
+output "backend_target_group_arn" {
+  description = "Backend ALB target group ARN"
+  value       = aws_lb_target_group.backend.arn
+}
+
+output "backend_ecs_cluster_arn" {
+  description = "Backend ECS cluster ARN"
+  value       = aws_ecs_cluster.backend.arn
+}
+
+output "backend_ecs_service_name" {
+  description = "Backend ECS service name"
+  value       = aws_ecs_service.backend.name
+}
+
+output "backend_ecs_task_definition_arn" {
+  description = "Backend ECS task definition ARN"
+  value       = aws_ecs_task_definition.backend.arn
+}
+
+output "backend_cloudwatch_log_group_name" {
+  description = "CloudWatch log group for backend container logs"
+  value       = aws_cloudwatch_log_group.backend.name
+}
+
+output "backend_task_execution_role_arn" {
+  description = "ECS task execution IAM role ARN"
+  value       = aws_iam_role.ecs_task_execution.arn
+}
+
+output "backend_task_role_arn" {
+  description = "ECS task IAM role ARN"
+  value       = aws_iam_role.ecs_task.arn
 }
