@@ -7,9 +7,10 @@ environment = "dev"
 owner       = "homeops"
 purpose     = "mvp"
 
-# Keep private-only networking for Issue #61.
+# Issue #66 runtime networking: private subnets for RDS, public subnets for ALB + ECS tasks.
 vpc_cidr             = "10.42.0.0/20"
 private_subnet_cidrs = ["10.42.0.0/24", "10.42.1.0/24"]
+public_subnet_cidrs  = ["10.42.2.0/24", "10.42.3.0/24"]
 
 # Optional: pin explicit AZs in your account and region.
 # availability_zones = ["us-east-2a", "us-east-2b"]
@@ -17,3 +18,13 @@ private_subnet_cidrs = ["10.42.0.0/24", "10.42.1.0/24"]
 db_name             = "homeops"
 db_port             = 5432
 spring_profile      = "aws-dev"
+
+# ECS runtime tuning for development.
+backend_image_tag                        = "sha-659a315"
+backend_container_port                   = 8080
+ecs_desired_count                        = 1
+ecs_task_cpu                             = 256
+ecs_task_memory                          = 512
+ecs_health_check_grace_period_seconds    = 180
+alb_health_check_path                    = "/actuator/health"
+cloudwatch_log_retention_days            = 14

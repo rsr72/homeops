@@ -14,7 +14,143 @@ It is intended to support:
 
 Entries should focus on what was done, why it was done, what was learned, and what engineering skill or principle the experience demonstrates.
 
+## AI-Assisted Engineering Operating Model
+
+HomeOps uses a responsibility model that mirrors enterprise engineering practice while making the AI roles explicit.
+
+- ChatGPT is the architecture, reasoning, review, governance, security/cost analysis, and decision-support layer.
+- Copilot Agent is the codebase-aware implementation agent.
+- The human engineer owns scope, approvals, validation, Git, credentials, consequential actions, and release.
+
+"AI-assisted software engineering with human-controlled architecture, governance, validation, and delivery."
+
+Enterprise responsibility model:
+
+| Area | Primary owner | What it covers |
+| --- | --- | --- |
+| Engineer | Human engineer | Owns change and final decisions |
+| Reasoning / review | ChatGPT or approved enterprise AI assistant | Architecture, alternatives, security, cost, review |
+| Implementation | Copilot Agent or repo-connected coding agent | Codebase-aware implementation and tests |
+| Work management | GitHub Issues, Jira, GitHub, or Azure DevOps | Requirements and audit trail |
+| Architecture | ADRs and design docs | Decision rationale |
+| Validation | Maven, Vitest, Playwright, Terraform, CI quality gates | Verifies implementation |
+| Approval | Human + PR, peer, owner, security | Human accountability |
+| Deployment | Terraform and AWS, controlled CD | Consequential infrastructure changes |
+
+The working sequence is intentionally ordered:
+
+1. ChatGPT architecture and review.
+2. Copilot plan generation.
+3. Human review of scope, tradeoffs, and risks.
+4. Copilot Agent implementation.
+5. Terraform and test execution.
+6. ChatGPT review of the evidence and outcome.
+7. Human approval.
+8. Apply, commit, and pull request.
+
+Traditional Cloud Foundry:
+
+`FastAPI → Python → Cloud Foundry → service binding → PostgreSQL`
+
+HomeOps modernization:
+
+`Spring Boot → Java → Docker → ECR → ECS/Fargate → RDS PostgreSQL`
+
+AI-assisted engineering across either model:
+
+`reasoning/review AI → human engineering decision → repo-connected implementation agent → Git/CI validation → runtime platform`
+
+This is the same basic responsibility split a team would expect in enterprise Python/FastAPI/Cloud Foundry work: the AI can accelerate analysis and implementation, but the human still owns authorization, operational risk, environment access, release judgment, and final accountability. ChatGPT functions like an enterprise architecture and governance reviewer, Copilot Agent like a fast implementation pair programmer with repository context, and the human engineer like the release manager and system owner.
+
+The model is useful when documenting cloud and platform engineering because it preserves decision provenance, makes validation explicit, and keeps security and cost decisions tied to named human approval rather than implied AI authority.
+
+Enterprise use requires employer-approved AI tooling, and proprietary, restricted, customer, credential, or other protected data must not be placed into unapproved consumer AI services.
+
 ---
+
+## 2026-08-15 — Issue #66 ECS/Fargate Backend Deployment Completion
+
+### Context
+
+Issue #66 completed the first working backend deployment on the approved ECS/Fargate runtime path from ADR-0002. The goal was not just to start containers in AWS, but to prove the full deployment chain from immutable image artifact to live application traffic.
+
+The early ECS slice exposed several real integration failures that were not visible from local compilation or Terraform resource creation alone:
+
+- the application initially failed at startup because the backend wiring was not actually connected to the AWS database runtime,
+- the Testcontainers-based integration path had to be modernized so the repository wiring test became a real integration gate instead of a skipped safety net,
+- the locally built Docker artifact had to match the AWS runtime architecture contract (`linux/amd64` rather than the local Apple Silicon default),
+- and Terraform security-group ownership had to be corrected so standalone VPC security-group rule resources were the exclusive rule owners.
+
+### What Was Completed
+
+The backend was deployed as an ECS/Fargate service behind an ALB using the immutable ECR artifact published in the prior slice.
+
+The deployment work validated the full runtime chain:
+
+```text
+Terraform
+	↓
+AWS resources
+	↓
+ECS task definition and service
+	↓
+running container
+	↓
+secret injection
+	↓
+Spring Boot startup
+	↓
+RDS PostgreSQL connection
+	↓
+Flyway migrations
+	↓
+Hibernate schema validation
+	↓
+Actuator health
+	↓
+ALB target health
+	↓
+client request
+```
+
+Key implementation and validation lessons:
+
+- Terraform apply success did not prove the application worked.
+- `BUILD SUCCESS` with a skipped critical integration test was not sufficient evidence of runtime health.
+- Compile-time and dependency-resolution success did not prove Docker or ECS runtime compatibility.
+- Post-apply Terraform reconciliation mattered because the AWS provider state still had to settle cleanly after SG ownership changes.
+- The ALB had to wait for a genuinely healthy application target; startup timing was part of the deployment contract, not a cosmetic detail.
+- Immutable artifact traceability mattered because the deployed container could be tied back to a specific Git SHA and image digest rather than a mutable tag.
+
+### Resolution Summary
+
+- Spring backend wiring was corrected so the AWS runtime used the real database-backed configuration path.
+- Testcontainers was modernized to the 2.0.5 line and used as a hard repository-wiring integration gate.
+- The CI path was separated so the integration test could not silently disappear behind unit-only success.
+- The Docker artifact was aligned with AWS runtime expectations so the container image matched ECS/Fargate architecture requirements.
+- Terraform security-group rule ownership was cleaned up so standalone `aws_vpc_security_group_ingress_rule` and `aws_vpc_security_group_egress_rule` resources owned the actual rules.
+- The service eventually reached healthy state behind the ALB and was validated end to end.
+
+### Engineering Lesson
+
+This issue reinforced the difference between infrastructure provisioned successfully and software operating successfully. Real deployment confidence comes from a validated chain that reaches the client, not from isolated success in Terraform, Maven, or a Docker build.
+
+The work also reinforced why HomeOps keeps immutable artifacts, explicit runtime validation, and post-apply reconciliation in the process. Those controls make it possible to detect architecture mismatches, startup failures, and infrastructure ownership drift before they become invisible production assumptions.
+
+### Skills Demonstrated
+
+- ECS/Fargate deployment validation
+- Spring Boot runtime wiring against AWS RDS
+- Testcontainers integration-gate modernization
+- Docker architecture compatibility management
+- Terraform security-group rule ownership design
+- ALB health and startup timing analysis
+- immutable artifact traceability
+- end-to-end deployment reasoning
+
+### Historical Note
+
+ADR-0002 superseded the runtime direction from ADR-0001, but the earlier App Runner-era entries remain part of the project history. This retrospective records the completed ECS/Fargate implementation without rewriting that history.
 
 ## 2026-08-15 — Issue #64 Runtime Architecture Decision Update (Documentation Only)
 

@@ -51,17 +51,28 @@ variable "private_subnet_cidrs" {
   }
 }
 
+variable "public_subnet_cidrs" {
+  description = "CIDR blocks for public subnets. At least two are required"
+  type        = list(string)
+  default     = ["10.42.2.0/24", "10.42.3.0/24"]
+
+  validation {
+    condition     = length(var.public_subnet_cidrs) >= 2
+    error_message = "At least two public subnet CIDRs are required."
+  }
+}
+
 variable "availability_zones" {
-  description = "Optional explicit AZs for private subnets. If empty, the first N available AZs are used"
+  description = "Optional explicit AZs for subnet placement. If empty, the first N available AZs are used"
   type        = list(string)
   default     = []
 
   validation {
     condition = length(var.availability_zones) == 0 || (
       length(var.availability_zones) >= 2 &&
-      length(var.availability_zones) == length(var.private_subnet_cidrs)
+      length(var.availability_zones) >= max(length(var.private_subnet_cidrs), length(var.public_subnet_cidrs))
     )
-    error_message = "If availability_zones is set, provide at least two AZs and one AZ per private subnet CIDR."
+    error_message = "If availability_zones is set, provide at least two AZs and at least one AZ per configured private/public subnet CIDR."
   }
 }
 
@@ -147,4 +158,52 @@ variable "spring_profile" {
   description = "Spring profile contract for AWS runtime"
   type        = string
   default     = "aws-dev"
+}
+
+variable "backend_image_tag" {
+  description = "Immutable backend ECR image tag to deploy"
+  type        = string
+  default     = "sha-659a315"
+}
+
+variable "backend_container_port" {
+  description = "Application container port for the backend service"
+  type        = number
+  default     = 8080
+}
+
+variable "ecs_desired_count" {
+  description = "Desired running task count for backend ECS service"
+  type        = number
+  default     = 1
+}
+
+variable "ecs_task_cpu" {
+  description = "Fargate task CPU units for backend service"
+  type        = number
+  default     = 256
+}
+
+variable "ecs_task_memory" {
+  description = "Fargate task memory in MiB for backend service"
+  type        = number
+  default     = 512
+}
+
+variable "ecs_health_check_grace_period_seconds" {
+  description = "ECS service grace period before evaluating ALB health checks"
+  type        = number
+  default     = 180
+}
+
+variable "alb_health_check_path" {
+  description = "ALB target group health check path"
+  type        = string
+  default     = "/actuator/health"
+}
+
+variable "cloudwatch_log_retention_days" {
+  description = "CloudWatch log retention for backend runtime logs"
+  type        = number
+  default     = 14
 }

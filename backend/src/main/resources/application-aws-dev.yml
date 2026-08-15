@@ -1,11 +1,11 @@
 spring:
   config:
     activate:
-      on-profile: local-postgres
+      on-profile: aws-dev
   datasource:
-    url: jdbc:postgresql://${HOMEOPS_DB_HOST:localhost}:${HOMEOPS_DB_PORT:5432}/${HOMEOPS_DB_NAME:homeops}
-    username: ${HOMEOPS_DB_USER:homeops}
-    password: ${HOMEOPS_DB_PASSWORD:homeops_dev_password}
+    url: jdbc:postgresql://${APP_DB_HOST:localhost}:${APP_DB_PORT:5432}/${APP_DB_NAME:homeops}
+    username: ${APP_DB_USER:homeops}
+    password: ${APP_DB_PASSWORD:homeops_dev_password}
     driver-class-name: org.postgresql.Driver
   jpa:
     hibernate:

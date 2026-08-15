@@ -11,8 +11,23 @@ From this directory:
 
 ```bash
 ./mvnw test
+./mvnw verify
 ./mvnw package
 ```
+
+Unit tests:
+
+```bash
+./mvnw test
+```
+
+Integration test gate:
+
+```bash
+./mvnw verify
+```
+
+Docker is required for integration validation because the aws-dev repository wiring test starts a real PostgreSQL Testcontainer.
 
 ## Run locally
 

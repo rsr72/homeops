@@ -24,9 +24,34 @@ jobs:
           java-version: '21'
           cache: maven
 
-      - name: Verify backend
+      - name: Unit test backend
+        working-directory: backend
+        run: ./mvnw test
+
+  backend-integration-validate:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Java 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: maven
+
+      - name: Verify backend integration tests
         working-directory: backend
         run: ./mvnw verify
+
+      - name: Enforce integration gate result
+        working-directory: backend
+        run: |
+          REPORT="target/failsafe-reports/com.homeops.backend.AwsDevRepositoryWiringIT.txt"
+          test -f "$REPORT"
+          grep -q 'Tests run: 1, Failures: 0, Errors: 0, Skipped: 0' "$REPORT"
 
   backend-docker-build:
     runs-on: ubuntu-latest
