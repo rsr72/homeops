@@ -90,11 +90,23 @@ The selected development runtime model is now:
 - SG-restricted traffic: ALB -> ECS task -> RDS
 - Secrets Manager for DB credentials and CloudWatch for logs/monitoring
 
-CloudFront provides the public HTTPS endpoint using its default domain. The current ALB has an HTTP listener only, so CloudFront-to-ALB traffic for `/api/*` is temporarily HTTP in this development topology. A future ALB HTTPS, ACM, Route 53, and custom-domain decision is required before treating that origin connection as production-ready.
+CloudFront provides the public HTTPS endpoint using its default domain. CloudFront fixes the viewer TLS policy at `TLSv1` when using its default `*.cloudfront.net` certificate, so Terraform does not configure an explicit minimum protocol for this development distribution. An explicit viewer minimum such as `TLSv1.2_2021` is meaningful only with a custom certificate. A future custom domain with an ACM certificate in `us-east-1` can use that stronger policy. The current ALB has an HTTP listener only, so CloudFront-to-ALB traffic for `/api/*` is temporarily HTTP in this development topology. A future ALB HTTPS, ACM, Route 53, and custom-domain decision is required before treating that origin connection as production-ready.
 
 The React frontend keeps its relative `/api` API contract. Because CloudFront routes those requests on the same public origin, no browser CORS policy is required for the current API workflow. A CloudFront Function rewrites only extensionless frontend paths on the default S3 behavior to `index.html`, leaving API errors unmodified.
 
 Terraform now defines the development VPC, RDS, ECR, ECS/Fargate, ALB, private frontend S3 origin, and CloudFront distribution. Frontend build artifacts are deployed manually to the private bucket; automated deployment remains deferred.
+
+## Development Lifecycle
+
+The development environment has a small operator lifecycle implemented by [infra/scripts/homeops-dev-lifecycle.sh](../../infra/scripts/homeops-dev-lifecycle.sh). Terraform remains the infrastructure owner: the command changes the ignored local Terraform input for ECS desired count and applies only a plan that contains that one expected ECS service update. It does not hide drift with `ignore_changes` or mutate ECS desired count directly through the AWS CLI.
+
+- **Awake:** RDS is available, ECS desired/running count is one, and the ALB has a healthy target. The command verifies the API through CloudFront.
+- **Sleep:** ECS desired/running count is zero while RDS and the Terraform-managed ALB remain provisioned.
+- **Deep Sleep:** ECS is first confirmed stopped, then RDS is stopped. The ALB remains provisioned.
+
+The command reports transitional, inconsistent, and missing-resource states rather than treating them as healthy. A missing ALB is a Terraform reconciliation condition; it must be restored through a reviewed Terraform plan and apply.
+
+Issue #69 does not remove the ALB in Deep Sleep. Issue #70 tracks the deferred acceptance criterion to eliminate ALB cost through a declarative Terraform runtime-layer design that safely coordinates CloudFront `/api/*` routing with ALB absence.
 
 Issue #61 defines the first Terraform foundation contracts under `infra/terraform/` while intentionally avoiding provisioning and runtime deployment.
 

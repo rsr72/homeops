@@ -19,7 +19,9 @@ db_name             = "homeops"
 db_port             = 5432
 spring_profile      = "aws-dev"
 
-# ECS runtime tuning for development.
+# ECS runtime tuning for development. The lifecycle command updates this local,
+# ignored value through Terraform; do not change ECS desired count with AWS CLI.
+# Use 1 for Awake and 0 for Sleep or Deep Sleep.
 backend_image_tag                        = "sha-659a315"
 backend_container_port                   = 8080
 ecs_desired_count                        = 1

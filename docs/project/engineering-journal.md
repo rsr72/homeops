@@ -152,7 +152,59 @@ The work also reinforced why HomeOps keeps immutable artifacts, explicit runtime
 
 ADR-0002 superseded the runtime direction from ADR-0001, but the earlier App Runner-era entries remain part of the project history. This retrospective records the completed ECS/Fargate implementation without rewriting that history.
 
-## 2026-08-15 — FinOps / Development Environment Lifecycle for ECS/Fargate
+## 2026-08-15 — Issue #69 Development Lifecycle Command Implementation
+
+### Context
+
+The ECS/Fargate deployment created a real development environment with meaningful idle cost. The prior lifecycle notes identified the need to pause ECS and RDS, but manual AWS CLI operations could leave Terraform desired state out of sync or hide an incomplete startup behind an apparently successful command.
+
+### What Was Implemented
+
+Issue #69 adds a local operator command with `status`, `awake`, `sleep`, and `deep-sleep` actions. The command keeps Terraform responsible for the ECS service by changing the ignored local Terraform input for `ecs_desired_count` and applying only an inspected plan that contains the expected desired-count update.
+
+The operational states are now:
+
+| State | ECS | RDS | ALB | Approximate cost behavior |
+| --- | --- | --- | --- | --- |
+| Awake | desired/running 1 | available | retained and healthy | Existing active-development baseline |
+| Sleep | desired/running 0 | available | retained | Removes Fargate compute while retaining RDS and ALB |
+| Deep Sleep | desired/running 0 | stopped | retained | Removes Fargate and RDS instance compute; storage and ALB costs remain |
+
+`awake` follows the required dependency order: RDS start, RDS availability wait, runtime presence check, Terraform-managed ECS scale-up, target health wait, then CloudFront API verification. `deep-sleep` first proves ECS has no desired, running, or pending tasks before it stops RDS. The command reports inconsistent and transitional states explicitly and fails when the API is not healthy.
+
+### Ownership Boundary and Deferred Work
+
+No `ignore_changes` rule was added. No Terraform-managed ALB, target group, listener, ECS service, or CloudFront dependency is deleted through the AWS CLI. If the ALB is missing, the command reports a Terraform reconciliation requirement and refuses to proceed until a reviewed Terraform plan and apply restore the managed runtime path.
+
+The original Deep Sleep ambition to eliminate ALB cost is deferred. Removing the ALB safely requires a declarative Terraform runtime-layer design that coordinates ECS service lifecycle, ALB and target-group resources, and CloudFront `/api/*` origin behavior. That is a separate follow-up infrastructure issue, not an out-of-band lifecycle operation.
+
+### CloudFront Default Certificate Reconciliation
+
+The CloudFront default `*.cloudfront.net` certificate fixes the viewer TLS policy at `TLSv1`, regardless of an explicit Terraform `minimum_protocol_version`. Terraform therefore omits that unsupported setting while the distribution uses `cloudfront_default_certificate = true`. This aligns Terraform desired state with AWS behavior and does not change the currently deployed TLS behavior.
+
+The repeated S3 bucket-policy update was not actual policy drift. It cascaded from Terraform deferring the policy document because it depends on the CloudFront distribution ARN while the unresolved CloudFront update was planned. The live OAC policy already restricted reads to the intended distribution and account. A future custom domain with an ACM certificate in `us-east-1` can use an explicit viewer policy such as `TLSv1.2_2021` or newer.
+
+### CI/CD Promotion Learning Decision
+
+HomeOps intentionally operates one persistent AWS runtime environment, DEV, while the MVP is validated. TEST may initially be automated or ephemeral, and STAGE and PROD are initially CI/CD promotion gates rather than permanently hosted copies of DEV.
+
+The delivery model is still designed as an enterprise promotion path: build one immutable image, run unit tests, deploy that exact image to DEV, run integration and E2E tests, then use stricter test, Terraform-plan, dependency/image-scan, and approval gates before later production deployment validation. No environment rebuilds its own Docker image; environment-specific configuration and secrets remain outside the artifact.
+
+This cost-conscious model allows future isolated environments to replace the simulated gates without redesigning delivery: DEV -> TEST -> STAGE -> PROD. True Stage and Prod environments are required before real users, payments, or production data are introduced.
+
+### Validation Status
+
+Local mocked lifecycle tests cover ordering, idempotency, guarded Terraform-plan rejection, desired-count restoration on failure, missing-ALB reporting, `stopping -> stopped` RDS polling, the absence of an invalid RDS stopped waiter, and bounded timeout reporting with the last observed status.
+
+Live validation completed on 2026-08-15 without deleting Terraform-managed runtime resources:
+
+1. **Awake -> Sleep:** Terraform changed only ECS desired count from one to zero. RDS remained `available`, the ALB remained `active`, and the final lifecycle state was `SLEEP`.
+2. **Sleep -> Deep Sleep:** ECS desired and running counts reached zero before the RDS stop action. Validation discovered that the AWS CLI has no `aws rds wait db-instance-stopped` waiter. The command was corrected to use bounded `DBInstanceStatus` polling, the mock regression tests passed, and the final lifecycle state was `DEEP_SLEEP` with RDS `stopped`.
+3. **Deep Sleep -> Awake:** RDS started and reached `available` before Terraform changed only ECS desired count from zero to one. ECS became running, the ALB target became healthy, and the final state was `AWAKE` with RDS `available`, ECS desired/running/pending counts of `1/1/0`, ALB `active`, and one healthy target.
+
+The complete cold Deep Sleep -> Awake recovery took approximately nine minutes. Issue #70 tracks the next FinOps step: a Terraform-safe declarative design for optional ALB/runtime removal and later restoration, including CloudFront `/api/*` reconciliation.
+
+## 2026-08-15 — Historical FinOps / Development Environment Lifecycle for ECS/Fargate
 
 ### Context
 
@@ -160,13 +212,15 @@ Issue #66 was successfully completed and merged after end-to-end AWS validation.
 
 ### Operating States
 
-HomeOps now treats the development environment as having three operational states:
+At the time, HomeOps treated the development environment as having three operational states:
 
 | State | Definition | Approximate cost | When to use |
 | --- | --- | --- | --- |
 | Running | ECS desired count 1, RDS running, ALB provisioned | about $50-60/month | Active development, testing, or validation |
 | Sleeping | ECS desired count 0, RDS stopped, ALB retained | about $22-30/month | Hours, overnight, or a single day of inactivity |
 | Deep Sleep | RDS stopped and ECS/ALB runtime layer destroyed through Terraform while retaining inexpensive foundation resources | about $3-5/month | Multi-day inactivity or planned idle periods |
+
+Issue #69 supersedes this operational model. The current lifecycle command retains the ALB in Deep Sleep and defers ALB-cost elimination until a follow-up issue provides a declarative Terraform runtime-layer design that also reconciles CloudFront `/api/*` routing.
 
 ### FinOps Lesson
 
