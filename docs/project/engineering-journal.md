@@ -152,7 +152,7 @@ The work also reinforced why HomeOps keeps immutable artifacts, explicit runtime
 
 ADR-0002 superseded the runtime direction from ADR-0001, but the earlier App Runner-era entries remain part of the project history. This retrospective records the completed ECS/Fargate implementation without rewriting that history.
 
-## 2026-08-15 — Issue #69 Development Lifecycle Command Implementation
+## 2026-08-15 — Issue #69 Development Lifecycle Command Implementation (Pre-Issue-#70 Behavior)
 
 ### Context
 
@@ -162,7 +162,7 @@ The ECS/Fargate deployment created a real development environment with meaningfu
 
 Issue #69 adds a local operator command with `status`, `awake`, `sleep`, and `deep-sleep` actions. The command keeps Terraform responsible for the ECS service by changing the ignored local Terraform input for `ecs_desired_count` and applying only an inspected plan that contains the expected desired-count update.
 
-The operational states are now:
+Before Issue #70, the operational states were:
 
 | State | ECS | RDS | ALB | Approximate cost behavior |
 | --- | --- | --- | --- | --- |
@@ -203,6 +203,30 @@ Live validation completed on 2026-08-15 without deleting Terraform-managed runti
 3. **Deep Sleep -> Awake:** RDS started and reached `available` before Terraform changed only ECS desired count from zero to one. ECS became running, the ALB target became healthy, and the final state was `AWAKE` with RDS `available`, ECS desired/running/pending counts of `1/1/0`, ALB `active`, and one healthy target.
 
 The complete cold Deep Sleep -> Awake recovery took approximately nine minutes. Issue #70 tracks the next FinOps step: a Terraform-safe declarative design for optional ALB/runtime removal and later restoration, including CloudFront `/api/*` reconciliation.
+
+## 2026-08-15 — Issue #70 Declarative Runtime Layer Implementation
+
+### Context
+
+Issue #69 reduced compute cost by scaling ECS to zero and stopping RDS, but retained the ALB because deleting Terraform-managed runtime resources imperatively would break Terraform ownership and CloudFront API routing. ALBs cannot be stopped; eliminating their idle cost requires an explicit declarative destroy/recreate boundary.
+
+### Design
+
+Issue #70 introduces `runtime_present` as a Terraform-controlled lifecycle input. When false, Terraform removes only the ephemeral runtime layer: ECS service, ALB listener, target group, ALB, and CloudFront `/api/*` origin behavior. When true, Terraform recreates that same layer. Explicit Terraform moved blocks preserve existing resource addresses when the newly conditional resources are introduced.
+
+Current Issue #70 Deep Sleep removes the ECS service, ALB listener, target group, ALB, and CloudFront API routing while RDS remains available; only then does it stop RDS.
+
+RDS storage/backups, ECR, S3 frontend, CloudFront distribution, Secrets Manager, SSM, networking, security groups, IAM roles, ECS cluster/task definition, and CloudWatch log group remain durable. This keeps state, data, identity, and network contracts stable while removing the principal idle runtime costs.
+
+### Dependency and Recovery Model
+
+Deep Sleep now follows: ECS desired count zero -> verify `0/0/0` -> Terraform runtime absent -> verify runtime absence while RDS remains available -> RDS stop -> bounded status polling -> Deep Sleep. Awake follows: RDS available -> Terraform runtime present with ECS desired count one -> ECS stable -> target healthy -> CloudFront API verification -> Awake.
+
+The lifecycle plan guard uses exact resource/action allowlists for normal Sleep, runtime removal, and runtime recreation. Unexpected infrastructure changes abort the operation and restore local lifecycle inputs. A partial Terraform failure leaves a declaratively recoverable state; rerunning the same requested lifecycle action reviews a new plan rather than bypassing Terraform.
+
+### Validation Status
+
+Mocked local tests cover runtime present/absent transitions, strict destroy/create plan allowlists, Deep Sleep and Awake ordering, idempotent Deep Sleep and Awake, unexpected plan rejection, apply-failure input restoration and recovery, and API verification only after runtime recreation, ECS readiness, and target health. No live Issue #70 runtime lifecycle transition has been run yet.
 
 ## 2026-08-15 — Historical FinOps / Development Environment Lifecycle for ECS/Fargate
 

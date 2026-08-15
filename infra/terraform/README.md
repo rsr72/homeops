@@ -153,7 +153,7 @@ Stop at `terraform plan` for the go/no-go checkpoint. Do not run `terraform appl
 
 ## Development Lifecycle Commands
 
-The development lifecycle command keeps Terraform as the owner of the ECS service. It updates the ignored local `environments/dev.tfvars` desired-count input and applies only a Terraform plan that changes `aws_ecs_service.backend.desired_count`. It does not call `aws ecs update-service` and does not use `ignore_changes`.
+The development lifecycle command keeps Terraform as the owner of the ECS service and runtime layer. It updates the ignored local `environments/dev.tfvars` inputs for `ecs_desired_count` and `runtime_present`, then applies only a Terraform plan that matches the approved lifecycle allowlist. It does not call `aws ecs update-service`, imperatively delete Terraform-managed resources, or use `ignore_changes`.
 
 From the repository root:
 
@@ -170,21 +170,15 @@ The command requires `aws`, `terraform`, `jq`, and `curl`, plus an initialized l
 | --- | --- | --- | --- | --- |
 | Awake | desired/running 1 | available | retained, target healthy | Active development and validation |
 | Sleep | desired/running 0 | available | retained | Short idle periods; Fargate compute paused |
-| Deep Sleep | desired/running 0 | stopped | retained | Multi-day idle periods; Fargate and RDS instance compute paused |
+| Deep Sleep | service absent | stopped | absent | Multi-day idle periods; runtime costs removed while durable resources remain |
 
-`awake` starts RDS, waits for `available`, confirms the Terraform-managed ALB and ECS service exist, applies the guarded desired-count change to one, waits for an ALB healthy target, and verifies `/api/households` through CloudFront. `sleep` applies the guarded desired-count change to zero and waits for no running or pending tasks. `deep-sleep` performs the sleep sequence first, then stops RDS and polls `DBInstanceStatus` until `stopped`; the poll is bounded and reports its last observed status on timeout because the AWS CLI has no `db-instance-stopped` waiter.
+`awake` starts RDS and waits for `available`, applies the guarded `runtime_present=true` and desired-count-one configuration, waits for ECS stability and an ALB healthy target, then verifies `/api/households` through CloudFront. `sleep` applies the guarded desired-count-zero configuration while retaining the runtime layer. `deep-sleep` first performs the Sleep sequence, then applies the guarded `runtime_present=false` configuration to remove the ECS service, listener, target group, ALB, and CloudFront API routing while RDS remains available. Only after Terraform confirms runtime absence does it stop RDS and poll `DBInstanceStatus` until `stopped`; the poll is bounded and reports its last observed status on timeout because the AWS CLI has no `db-instance-stopped` waiter.
 
 Live validation on 2026-08-15 confirmed the complete Awake -> Sleep -> Deep Sleep -> Awake path. A cold Deep Sleep -> Awake recovery took approximately nine minutes, so operators should account for several minutes of RDS startup before the ECS and ALB readiness stages begin.
 
-`status` returns `0` for Awake, Sleep, and Deep Sleep; `1` for a transitional state; and `2` for an error or `RECONCILIATION_REQUIRED` state. An absent or inactive ALB is `RECONCILIATION_REQUIRED`. Do not delete the ALB, target group, listener, ECS service, or CloudFront dependencies with AWS CLI. Reconcile a missing Terraform-managed runtime resource with a reviewed Terraform plan and apply before rerunning `awake`:
+`status` returns `0` for Awake, Sleep, Deep Sleep, and the intermediate `RUNTIME_ABSENT` state; `1` for a transitional state; and `2` for an error or `RECONCILIATION_REQUIRED` state. An absent runtime is expected only when `runtime_present=false`; otherwise it requires reconciliation. Do not delete the ALB, target group, listener, ECS service, or CloudFront dependencies with AWS CLI. Reconcile partial Terraform lifecycle failure with the same requested lifecycle action after reviewing its guarded plan.
 
-```bash
-cd infra/terraform
-terraform plan -var-file=environments/dev.tfvars
-terraform apply -var-file=environments/dev.tfvars
-```
-
-Issue #69 deliberately retains the ALB in Sleep and Deep Sleep. Issue #70 tracks eliminating ALB cost through a declarative Terraform runtime-layer design that coordinates the ECS service, ALB, target group, listener, and CloudFront `/api/*` origin behavior.
+Deep Sleep preserves RDS storage/backups, ECR, private S3 and CloudFront frontend delivery, Secrets Manager, SSM, networking, security groups, IAM roles, the ECS cluster/task definition, and CloudWatch log retention. The ALB cannot be stopped; Terraform destroys and later recreates it as part of the conditional runtime layer. CloudFront continues serving static frontend content while `/api/*` is unavailable.
 
 ## Controlled Apply and Manual ECR Publish Workflow
 

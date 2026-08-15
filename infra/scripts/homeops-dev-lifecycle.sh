@@ -12,9 +12,11 @@ AWS_REGION=""
 RDS_IDENTIFIER=""
 ECS_CLUSTER=""
 ECS_SERVICE=""
-ALB_ARN=""
 TARGET_GROUP_ARN=""
 FRONTEND_URL=""
+NAME_PREFIX=""
+RUNTIME_PRESENT=""
+RUNTIME_EXISTS=""
 RDS_STATUS=""
 ECS_DESIRED_COUNT=""
 ECS_RUNNING_COUNT=""
@@ -56,10 +58,10 @@ load_identifiers() {
   AWS_REGION="$(terraform_output aws_region)"
   RDS_IDENTIFIER="$(terraform_output rds_instance_identifier)"
   ECS_CLUSTER="$(terraform_output backend_ecs_cluster_arn)"
-  ECS_SERVICE="$(terraform_output backend_ecs_service_name)"
-  ALB_ARN="$(terraform_output backend_alb_arn)"
-  TARGET_GROUP_ARN="$(terraform_output backend_target_group_arn)"
+  NAME_PREFIX="$(terraform_output name_prefix)"
+  ECS_SERVICE="${NAME_PREFIX}-backend-service"
   FRONTEND_URL="$(terraform_output frontend_cloudfront_url)"
+  RUNTIME_PRESENT="$(terraform_output backend_runtime_present)"
 }
 
 collect_live_state() {
@@ -69,38 +71,68 @@ collect_live_state() {
     --query 'DBInstances[0].DBInstanceStatus' \
     --output text)"
 
-  read -r ECS_DESIRED_COUNT ECS_RUNNING_COUNT ECS_PENDING_COUNT ECS_STATUS <<<"$(aws ecs describe-services \
+  if ! ALB_STATUS="$(aws elbv2 describe-load-balancers \
+    --region "$AWS_REGION" \
+    --names "${NAME_PREFIX}-backend-alb" \
+    --query 'LoadBalancers[0].State.Code' \
+    --output text 2>/dev/null)"; then
+    ALB_STATUS="absent"
+    RUNTIME_EXISTS="false"
+    HEALTHY_TARGET_COUNT="0"
+    TARGET_GROUP_ARN=""
+  else
+    RUNTIME_EXISTS="true"
+    if TARGET_GROUP_ARN="$(aws elbv2 describe-target-groups \
+      --region "$AWS_REGION" \
+      --names "${NAME_PREFIX}-backend-tg" \
+      --query 'TargetGroups[0].TargetGroupArn' \
+      --output text 2>/dev/null)"; then
+      HEALTHY_TARGET_COUNT="$(aws elbv2 describe-target-health \
+        --region "$AWS_REGION" \
+        --target-group-arn "$TARGET_GROUP_ARN" \
+        --query 'length(TargetHealthDescriptions[?TargetHealth.State==`healthy`])' \
+        --output text)"
+    else
+      TARGET_GROUP_ARN=""
+      HEALTHY_TARGET_COUNT="0"
+    fi
+  fi
+
+  local ecs_service_state
+  if ecs_service_state="$(aws ecs describe-services \
     --region "$AWS_REGION" \
     --cluster "$ECS_CLUSTER" \
     --services "$ECS_SERVICE" \
     --query 'services[0].[desiredCount,runningCount,pendingCount,status]' \
-    --output text)"
-
-  if ! ALB_STATUS="$(aws elbv2 describe-load-balancers \
-    --region "$AWS_REGION" \
-    --load-balancer-arns "$ALB_ARN" \
-    --query 'LoadBalancers[0].State.Code' \
     --output text 2>/dev/null)"; then
-    ALB_STATUS="absent"
-    HEALTHY_TARGET_COUNT="0"
+    read -r ECS_DESIRED_COUNT ECS_RUNNING_COUNT ECS_PENDING_COUNT ECS_STATUS <<<"$ecs_service_state"
+    if [[ "$ECS_STATUS" == "INACTIVE" ]]; then
+      ECS_DESIRED_COUNT="0"
+      ECS_RUNNING_COUNT="0"
+      ECS_PENDING_COUNT="0"
+      ECS_STATUS="absent"
+    fi
   else
-    HEALTHY_TARGET_COUNT="$(aws elbv2 describe-target-health \
-      --region "$AWS_REGION" \
-      --target-group-arn "$TARGET_GROUP_ARN" \
-      --query 'length(TargetHealthDescriptions[?TargetHealth.State==`healthy`])' \
-      --output text)"
+    ECS_DESIRED_COUNT="0"
+    ECS_RUNNING_COUNT="0"
+    ECS_PENDING_COUNT="0"
+    ECS_STATUS="absent"
   fi
 
-  if [[ "$ALB_STATUS" != "active" ]]; then
+  if [[ "$RUNTIME_PRESENT" == "false" && ("$RUNTIME_EXISTS" == "true" || "$ECS_STATUS" != "absent") ]]; then
+    CURRENT_STATE="RECONCILIATION_REQUIRED"
+  elif [[ "$RUNTIME_PRESENT" == "true" && ("$RUNTIME_EXISTS" != "true" || "$ECS_STATUS" == "absent") ]]; then
     CURRENT_STATE="RECONCILIATION_REQUIRED"
   elif [[ "$RDS_STATUS" == "stopped" && "$ECS_RUNNING_COUNT" != "0" ]]; then
     CURRENT_STATE="ERROR"
-  elif [[ "$RDS_STATUS" == "available" && "$ECS_DESIRED_COUNT" == "1" && "$ECS_RUNNING_COUNT" == "1" && "$ECS_PENDING_COUNT" == "0" && "$HEALTHY_TARGET_COUNT" -ge 1 ]]; then
+  elif [[ "$RUNTIME_PRESENT" == "true" && "$RDS_STATUS" == "available" && "$ECS_DESIRED_COUNT" == "1" && "$ECS_RUNNING_COUNT" == "1" && "$ECS_PENDING_COUNT" == "0" && "$HEALTHY_TARGET_COUNT" -ge 1 ]]; then
     CURRENT_STATE="AWAKE"
-  elif [[ "$RDS_STATUS" == "available" && "$ECS_DESIRED_COUNT" == "0" && "$ECS_RUNNING_COUNT" == "0" && "$ECS_PENDING_COUNT" == "0" && "$HEALTHY_TARGET_COUNT" == "0" ]]; then
+  elif [[ "$RUNTIME_PRESENT" == "true" && "$RDS_STATUS" == "available" && "$ECS_DESIRED_COUNT" == "0" && "$ECS_RUNNING_COUNT" == "0" && "$ECS_PENDING_COUNT" == "0" && "$HEALTHY_TARGET_COUNT" == "0" ]]; then
     CURRENT_STATE="SLEEP"
-  elif [[ "$RDS_STATUS" == "stopped" && "$ECS_DESIRED_COUNT" == "0" && "$ECS_RUNNING_COUNT" == "0" && "$ECS_PENDING_COUNT" == "0" ]]; then
+  elif [[ "$RUNTIME_PRESENT" == "false" && "$RDS_STATUS" == "stopped" ]]; then
     CURRENT_STATE="DEEP_SLEEP"
+  elif [[ "$RUNTIME_PRESENT" == "false" && "$RDS_STATUS" == "available" ]]; then
+    CURRENT_STATE="RUNTIME_ABSENT"
   else
     CURRENT_STATE="TRANSITIONING"
   fi
@@ -108,6 +140,8 @@ collect_live_state() {
 
 print_status() {
   printf 'state=%s\n' "$CURRENT_STATE"
+  printf 'runtime_present=%s\n' "$RUNTIME_PRESENT"
+  printf 'runtime_exists=%s\n' "$RUNTIME_EXISTS"
   printf 'rds_status=%s\n' "$RDS_STATUS"
   printf 'ecs_desired_count=%s\n' "$ECS_DESIRED_COUNT"
   printf 'ecs_running_count=%s\n' "$ECS_RUNNING_COUNT"
@@ -119,7 +153,7 @@ print_status() {
 
 status_exit_code() {
   case "$CURRENT_STATE" in
-    AWAKE|SLEEP|DEEP_SLEEP) return 0 ;;
+    AWAKE|SLEEP|DEEP_SLEEP|RUNTIME_ABSENT) return 0 ;;
     TRANSITIONING) return 1 ;;
     RECONCILIATION_REQUIRED|ERROR) return 2 ;;
     *) return 2 ;;
@@ -128,7 +162,7 @@ status_exit_code() {
 
 ensure_reconcilable_runtime() {
   if [[ "$CURRENT_STATE" == "RECONCILIATION_REQUIRED" ]]; then
-    fail "A Terraform-managed ALB is absent or inactive. Reconcile it with Terraform, then rerun this command."
+    fail "Terraform runtime presence and live resources disagree. Reconcile with the lifecycle action or a reviewed Terraform plan."
   fi
 
   if [[ "$CURRENT_STATE" == "ERROR" ]]; then
@@ -136,18 +170,26 @@ ensure_reconcilable_runtime() {
   fi
 }
 
-set_desired_count_in_tfvars() {
+set_lifecycle_inputs_in_tfvars() {
   local desired_count="$1"
+  local runtime_present="$2"
   local assignment_count
+  local runtime_assignment_count
   local temporary_file
 
   assignment_count="$(grep -Ec '^[[:space:]]*ecs_desired_count[[:space:]]*=' "$TFVARS_FILE")"
+  runtime_assignment_count="$(grep -Ec '^[[:space:]]*runtime_present[[:space:]]*=' "$TFVARS_FILE")"
   [[ "$assignment_count" == "1" ]] || fail "Expected exactly one ecs_desired_count assignment in $TFVARS_FILE"
+  [[ "$runtime_assignment_count" == "1" ]] || fail "Expected exactly one runtime_present assignment in $TFVARS_FILE"
 
   temporary_file="$(mktemp "${TFVARS_FILE}.XXXXXX")"
-  awk -v desired_count="$desired_count" '
+  awk -v desired_count="$desired_count" -v runtime_present="$runtime_present" '
     /^[[:space:]]*ecs_desired_count[[:space:]]*=/ {
       print "ecs_desired_count = " desired_count
+      next
+    }
+    /^[[:space:]]*runtime_present[[:space:]]*=/ {
+      print "runtime_present = " runtime_present
       next
     }
     { print }
@@ -155,8 +197,10 @@ set_desired_count_in_tfvars() {
   mv "$temporary_file" "$TFVARS_FILE"
 }
 
-apply_desired_count() {
+apply_lifecycle_configuration() {
   local desired_count="$1"
+  local runtime_present="$2"
+  local transition="$3"
   local original_file
   local plan_file
   local plan_exit_code
@@ -173,7 +217,7 @@ apply_desired_count() {
     rm -f "$plan_file"
   }
 
-  set_desired_count_in_tfvars "$desired_count"
+  set_lifecycle_inputs_in_tfvars "$desired_count" "$runtime_present"
 
   set +e
   terraform_command plan -detailed-exitcode -out="$plan_file" -var-file="$TFVARS_FILE"
@@ -183,42 +227,47 @@ apply_desired_count() {
   if [[ "$plan_exit_code" -ne 2 ]]; then
     restore_tfvars_on_failure
     if [[ "$plan_exit_code" -eq 0 ]]; then
-      fail "Terraform reported no desired-count change; refusing an unnecessary apply."
+      fail "Terraform reported no lifecycle configuration change; refusing an unnecessary apply."
     fi
     fail "Terraform plan failed; restored the previous desired count."
   fi
 
-  if ! terraform_command show -json "$plan_file" | jq -e --argjson desired_count "$desired_count" '
-    (
-      [
-        .resource_changes[]?
-        | select(.change.actions != ["no-op"])
-        | select(
-            .address != "aws_ecs_service.backend"
-            or .change.actions != ["update"]
-            or .change.before.desired_count == .change.after.desired_count
-          )
-      ] | length
-    ) == 0
-    and (
-      [
-        .resource_changes[]?
-        | select(
-            .address == "aws_ecs_service.backend"
-            and .change.actions == ["update"]
-            and .change.before.desired_count != .change.after.desired_count
-            and .change.after.desired_count == $desired_count
-          )
-      ] | length
-    ) == 1
+  if ! terraform_command show -json "$plan_file" | jq -e --arg transition "$transition" --argjson desired_count "$desired_count" '
+    [.resource_changes[]? | select(.change.actions != ["no-op"]) | {address, actions: .change.actions, before: .change.before, after: .change.after}] as $changes
+    | def exact($expected):
+        ($changes | length) == ($expected | length)
+        and all($expected[]; . as $expected_change | ($changes | any(.address == $expected_change.address and .actions == $expected_change.actions)));
+    if $transition == "sleep" then
+      exact([{address: "aws_ecs_service.backend[0]", actions: ["update"]}])
+      and ($changes[0].before.desired_count != $changes[0].after.desired_count)
+      and ($changes[0].after.desired_count == $desired_count)
+    elif $transition == "runtime-absent" then
+      exact([
+        {address: "aws_ecs_service.backend[0]", actions: ["delete"]},
+        {address: "aws_lb_listener.backend_http[0]", actions: ["delete"]},
+        {address: "aws_lb_target_group.backend[0]", actions: ["delete"]},
+        {address: "aws_lb.backend[0]", actions: ["delete"]},
+        {address: "aws_cloudfront_distribution.frontend", actions: ["update"]}
+      ])
+    elif $transition == "runtime-present" then
+      exact([
+        {address: "aws_ecs_service.backend[0]", actions: ["create"]},
+        {address: "aws_lb_listener.backend_http[0]", actions: ["create"]},
+        {address: "aws_lb_target_group.backend[0]", actions: ["create"]},
+        {address: "aws_lb.backend[0]", actions: ["create"]},
+        {address: "aws_cloudfront_distribution.frontend", actions: ["update"]}
+      ])
+    else
+      false
+    end
   ' >/dev/null; then
     restore_tfvars_on_failure
-    fail "Terraform plan includes changes outside aws_ecs_service.backend desired_count; restored the previous desired count."
+    fail "Terraform plan does not match the approved $transition lifecycle allowlist; restored the previous lifecycle inputs."
   fi
 
   if ! terraform_command apply "$plan_file"; then
     restore_tfvars_on_failure
-    fail "Terraform apply failed; restored the previous desired count."
+    fail "Terraform apply failed; restored the previous lifecycle inputs."
   fi
 
   cleanup_transition_files
@@ -279,7 +328,7 @@ awake() {
     return
   fi
 
-  [[ "$CURRENT_STATE" == "SLEEP" || "$CURRENT_STATE" == "DEEP_SLEEP" ]] || fail "Cannot awake while state is $CURRENT_STATE. Run status and resolve the intermediate state first."
+  [[ "$CURRENT_STATE" == "SLEEP" || "$CURRENT_STATE" == "DEEP_SLEEP" || "$CURRENT_STATE" == "RUNTIME_ABSENT" ]] || fail "Cannot awake while state is $CURRENT_STATE. Run status and resolve the intermediate state first."
 
   if [[ "$RDS_STATUS" == "stopped" ]]; then
     aws rds start-db-instance --region "$AWS_REGION" --db-instance-identifier "$RDS_IDENTIFIER" >/dev/null
@@ -290,7 +339,7 @@ awake() {
   ensure_reconcilable_runtime
   [[ "$RDS_STATUS" == "available" ]] || fail "RDS did not become available."
 
-  apply_desired_count 1
+  apply_lifecycle_configuration 1 true runtime-present
   wait_for_ecs_state 1
   verify_application
   printf 'HomeOps development environment is awake.\n'
@@ -307,7 +356,7 @@ sleep() {
 
   [[ "$CURRENT_STATE" == "AWAKE" ]] || fail "Cannot sleep while state is $CURRENT_STATE. Run status and resolve the intermediate state first."
 
-  apply_desired_count 0
+  apply_lifecycle_configuration 0 true sleep
   wait_for_ecs_state 0
   [[ "$HEALTHY_TARGET_COUNT" == "0" ]] || fail "ALB still reports healthy targets after ECS stopped."
   printf 'HomeOps development environment is sleeping; RDS and ALB remain available.\n'
@@ -327,15 +376,22 @@ deep_sleep() {
     collect_live_state
   fi
 
-  [[ "$CURRENT_STATE" == "SLEEP" ]] || fail "Cannot enter deep sleep while state is $CURRENT_STATE. Run status and resolve the intermediate state first."
-  [[ "$ECS_DESIRED_COUNT" == "0" && "$ECS_RUNNING_COUNT" == "0" && "$ECS_PENDING_COUNT" == "0" ]] || fail "ECS must be fully stopped before RDS is stopped."
+  if [[ "$CURRENT_STATE" == "SLEEP" ]]; then
+    [[ "$ECS_DESIRED_COUNT" == "0" && "$ECS_RUNNING_COUNT" == "0" && "$ECS_PENDING_COUNT" == "0" ]] || fail "ECS must be fully stopped before RDS is stopped."
+
+    apply_lifecycle_configuration 0 false runtime-absent
+    RUNTIME_PRESENT="false"
+    collect_live_state
+  fi
+
+  [[ "$CURRENT_STATE" == "RUNTIME_ABSENT" ]] || fail "Cannot enter deep sleep while state is $CURRENT_STATE. Run status and resolve the intermediate state first."
 
   aws rds stop-db-instance --region "$AWS_REGION" --db-instance-identifier "$RDS_IDENTIFIER" >/dev/null
   wait_for_rds_stopped
 
   collect_live_state
   [[ "$CURRENT_STATE" == "DEEP_SLEEP" ]] || fail "RDS did not reach the expected deep-sleep state."
-  printf 'HomeOps development environment is in deep sleep; ALB remains Terraform-managed and provisioned.\n'
+  printf 'HomeOps development environment is in deep sleep; ECS runtime, ALB, listener, and target group are absent, RDS is stopped, and durable Terraform-managed frontend, storage, networking, registry, and secret resources remain. The frontend remains available; backend API functionality resumes after Awake.\n'
 }
 
 main() {

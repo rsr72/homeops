@@ -93,6 +93,8 @@ resource "aws_ecs_task_definition" "backend" {
 }
 
 resource "aws_ecs_service" "backend" {
+  count = var.runtime_present ? 1 : 0
+
   name                              = "${local.name_prefix}-backend-service"
   cluster                           = aws_ecs_cluster.backend.id
   task_definition                   = aws_ecs_task_definition.backend.arn
@@ -109,7 +111,7 @@ resource "aws_ecs_service" "backend" {
   }
 
   load_balancer {
-    target_group_arn = aws_lb_target_group.backend.arn
+    target_group_arn = aws_lb_target_group.backend[0].arn
     container_name   = "backend"
     container_port   = var.backend_container_port
   }

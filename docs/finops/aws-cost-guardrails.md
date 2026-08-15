@@ -52,6 +52,10 @@ All major AWS resources should be tagged consistently. Recommended tags include:
 - Use cloud resources primarily for integration testing, demonstration, or deployment rather than as an always-on development environment.
 - Keep runtime footprints small and avoid leaving unnecessary services running in the cloud.
 
+### Declarative Deep Sleep
+
+For HomeOps development, Deep Sleep may declaratively remove the ALB/ECS runtime layer after ECS reaches zero and before RDS is stopped. RDS storage/backups, frontend delivery, ECR, networking, security/identity contracts, and logs remain. This avoids paying the ALB and Fargate runtime baseline during multi-day idle periods while preserving a Terraform-controlled recreation path. The expected tradeoff is a slower Awake operation because Terraform must restore CloudFront API routing and the runtime layer before application health can be verified.
+
 ### Post-Deployment Verification
 
 After deployment or environment changes, verify:

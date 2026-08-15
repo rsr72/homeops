@@ -98,15 +98,15 @@ Terraform now defines the development VPC, RDS, ECR, ECS/Fargate, ALB, private f
 
 ## Development Lifecycle
 
-The development environment has a small operator lifecycle implemented by [infra/scripts/homeops-dev-lifecycle.sh](../../infra/scripts/homeops-dev-lifecycle.sh). Terraform remains the infrastructure owner: the command changes the ignored local Terraform input for ECS desired count and applies only a plan that contains that one expected ECS service update. It does not hide drift with `ignore_changes` or mutate ECS desired count directly through the AWS CLI.
+The development environment has a small operator lifecycle implemented by [infra/scripts/homeops-dev-lifecycle.sh](../../infra/scripts/homeops-dev-lifecycle.sh). Terraform remains the infrastructure owner: the command changes ignored local Terraform inputs for ECS desired count and runtime presence, then applies only an allowlisted lifecycle plan. It does not hide drift with `ignore_changes` or mutate ECS desired count directly through the AWS CLI.
 
 - **Awake:** RDS is available, ECS desired/running count is one, and the ALB has a healthy target. The command verifies the API through CloudFront.
 - **Sleep:** ECS desired/running count is zero while RDS and the Terraform-managed ALB remain provisioned.
-- **Deep Sleep:** ECS is first confirmed stopped, then RDS is stopped. The ALB remains provisioned.
+- **Deep Sleep:** ECS is first confirmed stopped; Terraform removes the ECS service, listener, target group, ALB, and CloudFront API routing while RDS remains available; then RDS is stopped.
 
-The command reports transitional, inconsistent, and missing-resource states rather than treating them as healthy. A missing ALB is a Terraform reconciliation condition; it must be restored through a reviewed Terraform plan and apply.
+The command reports transitional, inconsistent, and missing-resource states rather than treating them as healthy. A missing ALB is expected only when the declarative `runtime_present` input is false; otherwise it is a Terraform reconciliation condition. Deep Sleep leaves durable data, networking, frontend delivery, identity/configuration, ECS control-plane definitions, and log retention intact.
 
-Issue #69 does not remove the ALB in Deep Sleep. Issue #70 tracks the deferred acceptance criterion to eliminate ALB cost through a declarative Terraform runtime-layer design that safely coordinates CloudFront `/api/*` routing with ALB absence.
+Issue #70 introduces the declarative runtime-layer boundary needed to eliminate ALB cost during Deep Sleep while safely coordinating CloudFront `/api/*` routing with ALB absence.
 
 Issue #61 defines the first Terraform foundation contracts under `infra/terraform/` while intentionally avoiding provisioning and runtime deployment.
 

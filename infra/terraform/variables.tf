@@ -178,6 +178,12 @@ variable "ecs_desired_count" {
   default     = 1
 }
 
+variable "runtime_present" {
+  description = "Whether the development ALB and ECS service runtime layer is provisioned"
+  type        = bool
+  default     = true
+}
+
 variable "ecs_task_cpu" {
   description = "Fargate task CPU units for backend service"
   type        = number

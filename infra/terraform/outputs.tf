@@ -131,17 +131,17 @@ output "ecr_registry_id" {
 
 output "backend_alb_arn" {
   description = "Backend application load balancer ARN"
-  value       = aws_lb.backend.arn
+  value       = try(aws_lb.backend[0].arn, null)
 }
 
 output "backend_alb_dns_name" {
   description = "Backend application load balancer DNS name"
-  value       = aws_lb.backend.dns_name
+  value       = try(aws_lb.backend[0].dns_name, null)
 }
 
 output "backend_target_group_arn" {
   description = "Backend ALB target group ARN"
-  value       = aws_lb_target_group.backend.arn
+  value       = try(aws_lb_target_group.backend[0].arn, null)
 }
 
 output "backend_ecs_cluster_arn" {
@@ -151,7 +151,12 @@ output "backend_ecs_cluster_arn" {
 
 output "backend_ecs_service_name" {
   description = "Backend ECS service name"
-  value       = aws_ecs_service.backend.name
+  value       = try(aws_ecs_service.backend[0].name, null)
+}
+
+output "backend_runtime_present" {
+  description = "Whether the ALB and ECS service runtime layer is provisioned"
+  value       = var.runtime_present
 }
 
 output "backend_ecs_task_definition_arn" {
