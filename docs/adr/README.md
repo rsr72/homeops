@@ -49,6 +49,8 @@ This process is intentionally lightweight so it supports clarity and historical 
 ## Current ADRs
 
 
+- ADR-0003: GitHub Actions AWS Authentication via OIDC
+	- [0003-github-actions-oidc-authentication.md](0003-github-actions-oidc-authentication.md)
 - ADR-0002: ECS Fargate Runtime Architecture for Development
 	- [0002-ecs-fargate-runtime-architecture.md](0002-ecs-fargate-runtime-architecture.md)
 - ADR-0001: Initial HomeOps AWS Development Architecture (Superseded by ADR-0002 for runtime decision)

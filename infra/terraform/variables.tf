@@ -224,3 +224,33 @@ variable "cloudfront_price_class" {
     error_message = "CloudFront price class must be PriceClass_100, PriceClass_200, or PriceClass_All."
   }
 }
+
+variable "github_actions_owner" {
+  description = "GitHub account/org that owns the HomeOps repository, for OIDC trust"
+  type        = string
+  default     = "rsr72"
+}
+
+variable "github_actions_owner_id" {
+  description = "Immutable GitHub owner ID used in the OIDC immutable subject claim format"
+  type        = string
+  default     = "6588282"
+}
+
+variable "github_actions_repository" {
+  description = "GitHub repository name that owns the HomeOps repository, for OIDC trust"
+  type        = string
+  default     = "homeops"
+}
+
+variable "github_actions_repository_id" {
+  description = "Immutable GitHub repository ID used in the OIDC immutable subject claim format"
+  type        = string
+  default     = "1328002338"
+}
+
+variable "github_actions_trusted_branch" {
+  description = "Only branch permitted to assume the GitHub Actions OIDC role"
+  type        = string
+  default     = "main"
+}
