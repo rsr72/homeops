@@ -1,0 +1,113 @@
+name: Deploy Backend to AWS
+
+on:
+  workflow_dispatch:
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  deploy-backend:
+    runs-on: ubuntu-latest
+    env:
+      ECS_CLUSTER: homeops-dev-backend-cluster
+      ECS_SERVICE: homeops-dev-backend-service
+      ECR_REPOSITORY: homeops-dev-backend
+      FRONTEND_URL: ${{ vars.HOMEOPS_DEV_FRONTEND_URL }}
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Java 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: maven
+
+      - name: Verify backend
+        working-directory: backend
+        run: ./mvnw verify
+
+      - name: Configure AWS credentials via OIDC
+        uses: aws-actions/configure-aws-credentials@v6
+        with:
+          role-to-assume: ${{ vars.AWS_GITHUB_ACTIONS_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION }}
+
+      - name: Verify DEV runtime is Awake
+        env:
+          AWS_REGION: ${{ vars.AWS_REGION }}
+        run: |
+          service_state="$(aws ecs describe-services \
+            --region "$AWS_REGION" \
+            --cluster "$ECS_CLUSTER" \
+            --services "$ECS_SERVICE" \
+            --query 'services[0].[status,desiredCount,runningCount,pendingCount]' \
+            --output text 2>/dev/null || true)"
+          read -r service_status desired_count running_count pending_count <<<"$service_state"
+
+          if [[ "$service_status" != "ACTIVE" || "$desired_count" != "1" || "$running_count" != "1" || "$pending_count" != "0" ]]; then
+            echo "::error::HomeOps DEV runtime is not Awake. Run the existing lifecycle command with 'awake' before deploying."
+            exit 1
+          fi
+
+      - name: Log in to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build and push immutable backend image
+        id: build-image
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          IMAGE_TAG: sha-${{ github.sha }}
+        run: |
+          image_uri="$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG"
+          docker build --platform linux/amd64 -f backend/Dockerfile -t "$image_uri" backend
+          docker push "$image_uri"
+          echo "image=$image_uri" >> "$GITHUB_OUTPUT"
+
+      - name: Download currently deployed task definition
+        id: current-task-definition
+        env:
+          AWS_REGION: ${{ vars.AWS_REGION }}
+        run: |
+          task_definition_arn="$(aws ecs describe-services \
+            --region "$AWS_REGION" \
+            --cluster "$ECS_CLUSTER" \
+            --services "$ECS_SERVICE" \
+            --query 'services[0].taskDefinition' \
+            --output text)"
+          aws ecs describe-task-definition \
+            --region "$AWS_REGION" \
+            --task-definition "$task_definition_arn" \
+            --query taskDefinition > task-definition.json
+
+      - name: Render task definition with immutable image
+        id: render-task-definition
+        uses: aws-actions/amazon-ecs-render-task-definition@v1
+        with:
+          task-definition: task-definition.json
+          container-name: backend
+          image: ${{ steps.build-image.outputs.image }}
+
+      - name: Deploy task definition to ECS
+        uses: aws-actions/amazon-ecs-deploy-task-definition@v2
+        with:
+          task-definition: ${{ steps.render-task-definition.outputs.task-definition }}
+          service: ${{ env.ECS_SERVICE }}
+          cluster: ${{ env.ECS_CLUSTER }}
+          wait-for-service-stability: true
+          wait-max-delay-seconds: 15
+
+      - name: Verify backend API through CloudFront
+        run: |
+          if [[ -z "$FRONTEND_URL" ]]; then
+            echo "::error::Set HOMEOPS_DEV_FRONTEND_URL from Terraform output frontend_cloudfront_url before deploying."
+            exit 1
+          fi
+
+          curl --fail --silent --show-error --retry 6 --retry-all-errors --retry-delay 10 \
+            "$FRONTEND_URL/api/households" >/dev/null

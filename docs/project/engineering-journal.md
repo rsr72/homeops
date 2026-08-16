@@ -988,6 +988,30 @@ Potential resume language after the project has enough implementation evidence t
 
 > Applied modern SDLC and Agile engineering practices to a cloud-native SaaS product, establishing backlog quality gates, measurable acceptance criteria, feature-branch workflows, pull-request review, and human oversight of AI-assisted development.
 
+---
+
+## 2026-08-16 — OIDC Backend Deployment Ownership Boundary
+
+### Context
+
+HomeOps needs repeatable backend releases without static AWS credentials while preserving Terraform ownership of the development runtime and Deep Sleep cost controls.
+
+### Design
+
+GitHub Actions authenticates to AWS through the existing GitHub OIDC trust relationship. That authentication establishes the workflow identity; a separate least-privilege IAM policy authorizes only ECR image publishing, ECS task-definition revision registration, service deployment, and passing the existing ECS task roles to ECS.
+
+Terraform owns ECS service existence, cluster, networking, security groups, desired count, load-balancer integration, IAM roles, baseline task-definition configuration, and the Awake/Deep Sleep lifecycle. CI/CD owns the currently deployed ECS task-definition revision and its immutable `sha-${GITHUB_SHA}` image reference.
+
+The ECS service ignores only `task_definition` changes. This prevents Terraform lifecycle operations from reverting a CI-deployed revision while preserving Terraform drift detection for desired count, load-balancer configuration, networking, capacity settings, and every other service property. It is an explicit ownership boundary, not a general drift workaround.
+
+Each deployment publishes an immutable ECR image tag, reads the service's current task definition, renders the backend container image into a new revision, and waits for ECS service stability. `iam:PassRole` is restricted to the existing execution and task roles and only when the role is passed to `ecs-tasks.amazonaws.com`.
+
+The deployment workflow refuses to create, scale, or wake the runtime. It requires an already-Awake service with one desired and running task; a Deep Sleep or Sleep operator must first run the existing Awake lifecycle command. API verification reuses the established CloudFront `/api/households` request. The non-secret `HOMEOPS_DEV_FRONTEND_URL` repository variable is populated from Terraform's `frontend_cloudfront_url` output because GitHub-hosted runners cannot read local Terraform state and the deployment role intentionally has no CloudFront discovery permission.
+
+### Portfolio Takeaway
+
+> I built an OIDC-authenticated, least-privilege GitHub Actions pipeline that publishes immutable container images to ECR and deploys versioned ECS task definitions while respecting environment lifecycle and cost-control boundaries.
+
 ### Skills Demonstrated
 
 - Agile backlog refinement
