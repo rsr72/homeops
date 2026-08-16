@@ -359,6 +359,35 @@ This entry documents an architecture decision update only.
 
 Any Internet-accessible backend introduced under this development topology remains development-only until production authentication and authorization controls are implemented.
 
+## 2026-08-16 — GitHub Actions AWS Authentication via OIDC (ADR-0003)
+
+### Context
+
+Future CI/CD stages need GitHub Actions to call AWS APIs (image publishing, ECS deployment, Terraform automation). Storing long-lived `AWS_ACCESS_KEY_ID`/`AWS_SECRET_ACCESS_KEY` values as GitHub secrets was rejected in favor of OIDC federation, which issues short-lived, per-run credentials with no standing secrets.
+
+### What Was Done
+
+- Verified via `terraform.tfstate` that no `aws_iam_openid_connect_provider` for `token.actions.githubusercontent.com` already existed, avoiding a duplicate provider.
+- Verified GitHub's OIDC `sub` claim format for this specific repository rather than assuming the legacy format: `GET /repos/rsr72/homeops` showed `created_at: 2026-08-08`, which is after GitHub's 2026-07-15 immutable-subject-claim rollout cutoff. This means the repository's OIDC tokens use `repo:OWNER@OWNER-ID/REPO@REPO-ID:ref:refs/heads/BRANCH`, not the legacy `repo:OWNER/REPO:ref:refs/heads/BRANCH` format. Assuming the legacy format would have produced a trust policy that could never actually match.
+- Added Terraform-managed `aws_iam_openid_connect_provider.github_actions` and an IAM role (`github-oidc.tf`) whose trust policy uses `StringEquals` (not `StringLike`) on both the `aud` and `sub` claims, pinned to the exact immutable subject for `main`.
+- The role has **no permission policy** — `sts:GetCallerIdentity` requires zero IAM permissions, so the role starts at true least privilege.
+- Added `.github/workflows/aws-oidc-auth.yml`: `workflow_dispatch`-only, minimal `permissions: { id-token: write, contents: read }`, using `aws-actions/configure-aws-credentials@v6` (current stable major) to assume the role and run `aws sts get-caller-identity` as proof.
+- Documented the decision, trust-policy rationale, and OIDC mental model in [ADR-0003](../adr/0003-github-actions-oidc-authentication.md).
+
+### What Was Learned
+
+- Never assume a cloud IdP subject-claim format; verify it against the actual repository's metadata. GitHub's 2026-07-15 immutable-subject rollout means identical-looking trust policies can be silently wrong depending on a repository's creation date.
+- `StringEquals` is the correct condition operator when every claim value is a fixed, known string; `StringLike` should be reserved for wildcard matching, which was explicitly not needed here.
+- The tightest practical trust scope for this stage was branch-level (`ref:refs/heads/main`), not environment-level, because environment-scoped trust requires a manually configured GitHub Environment outside Terraform's authority — deferred as a documented future hardening step.
+
+### Scope Boundary
+
+This entry establishes the OIDC identity foundation only.
+
+- No permission policy was attached to the IAM role.
+- No ECR push, ECS deployment, S3/CloudFront frontend deployment, or Terraform apply from GitHub Actions was implemented.
+- `terraform apply` was not run as part of this change; the plan is reviewed for an additive-only resource delta and held for explicit human approval before any AWS resources are created.
+
 ### Skills Demonstrated
 
 - architecture supersession governance through ADRs

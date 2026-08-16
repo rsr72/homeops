@@ -199,6 +199,16 @@ output "frontend_cloudfront_domain_name" {
   value       = aws_cloudfront_distribution.frontend.domain_name
 }
 
+output "github_actions_oidc_provider_arn" {
+  description = "IAM OIDC provider ARN trusting GitHub Actions tokens"
+  value       = aws_iam_openid_connect_provider.github_actions.arn
+}
+
+output "github_actions_oidc_role_arn" {
+  description = "IAM role ARN GitHub Actions assumes via OIDC for AWS identity proof"
+  value       = aws_iam_role.github_actions.arn
+}
+
 output "frontend_cloudfront_url" {
   description = "HTTPS URL for the public frontend CloudFront distribution"
   value       = "https://${aws_cloudfront_distribution.frontend.domain_name}"
